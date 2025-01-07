@@ -266,6 +266,7 @@ class homeControllers {
   // };
   
   query_listings = async (req, res) => {
+    console.log("asdasdasdasd")
     console.log(req.query);
     console.log("_________")
     const parPage = 6;
@@ -303,8 +304,9 @@ class homeControllers {
         });
 
         console.log(totalListing)
+        console.log(result)
         // Send the response with the result and total listing count
-        responseReturn(res, 200, { listings: result, totalListing,parPage });
+        responseReturn(res, 200, { listings: result, totalListing, parPage });
     } catch (error) {
         console.log(error);
         responseReturn(res, 500, { message: "An error occurred while querying listings." });
