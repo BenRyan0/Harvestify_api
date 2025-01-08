@@ -557,6 +557,7 @@ class chatController{
                 if (MyPartners) {
                     responseReturn(res, 200, { myPartners: MyPartners.myPartners });
                 } else {
+                    
                     responseReturn(res, 200, { myPartners: [] });
                 }
             }
