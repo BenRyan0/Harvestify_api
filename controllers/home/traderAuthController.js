@@ -81,9 +81,57 @@ class traderAuthController{
     // };
 
 
+    // trader_login = async (req, res) => {
+    //     console.log("login");
+    //     console.log(req.body);
+    
+    //     const { email, password } = req.body;
+    
+    //     try {
+    //         const trader = await traderModel.findOne({ email }).select('+password');
+    
+    //         if (trader) {
+    //             // Check if the trader's status is "active"
+    //             if (trader.status !== 'active') {
+    //                 return responseReturn(res, 403, { redirect: 1 ,error: "Account is not active. Please contact support." });
+    //             }
+    
+    //             // Password match check
+    //             const match = await bcrypt.compare(password, trader.password);
+
+    //             console.log(trader)
+    
+    //             if (match) {
+    //                 const token = await createToken({
+    //                     id: trader.id,
+    //                     name: `${trader.firstName} ${trader.lastName}`,
+    //                     email: trader.email,
+    //                     role: trader.role
+    //                 });
+
+    //                 console.log(token)
+    
+    //                 res.cookie('traderToken', token, {
+    //                     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),  // 7 days expiration
+    //                     httpOnly: true,  // For added security
+    //                     // secure: process.env.NODE_ENV === "production" // Set secure only in production
+    //                 });
+    
+    //                 responseReturn(res, 200, { redirect: 0,token, message: "Login Success" });
+    //             } else {
+    //                 responseReturn(res, 401, { redirect: 0,error: "Invalid Credentials, Please try Again" });
+    //             }
+    //         } else {
+    //             responseReturn(res, 404, { redirect: 0,error: "Credential not found" });
+    //         }
+    //     } catch (error) {
+    //         console.error("Login Error:", error); // Log the error for debugging
+    //         responseReturn(res, 500, { redirect: 0,error: "Server error, please try again later." });
+    //     }
+    // };
     trader_login = async (req, res) => {
-        console.log("login");
-        console.log(req.body);
+        // console.log("login");
+        // console.log(req.body);
     
         const { email, password } = req.body;
     
@@ -91,42 +139,44 @@ class traderAuthController{
             const trader = await traderModel.findOne({ email }).select('+password');
     
             if (trader) {
-                // Check if the trader's status is "active"
                 if (trader.status !== 'active') {
-                    return responseReturn(res, 403, { redirect: 1 ,error: "Account is not active. Please contact support." });
+                    return responseReturn(res, 403, { redirect: 1, error: "Account is not active. Please contact support." });
                 }
     
-                // Password match check
                 const match = await bcrypt.compare(password, trader.password);
     
                 if (match) {
-                    const token = await createToken({
+                    const payload = {
                         id: trader.id,
-                        name: trader.firstName + " " + trader.lastName,
+                        name: `${trader.firstName} ${trader.lastName}`,
                         email: trader.email,
-                        method: trader.method,
-                        phone: trader.phone,
-                        role: "trader"
-                    });
+                        phone: trader.phoneNumber,
+                        role: trader.role,
+                    };
+                    // console.log("Token Payload:", payload);
+    
+                    const token = await createToken(payload);
+                    console.log("Generated Token:", token);
     
                     res.cookie('traderToken', token, {
-                        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),  // 7 days expiration
-                        httpOnly: true,  // For added security
-                        // secure: process.env.NODE_ENV === "production" // Set secure only in production
+                        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV === "production",
                     });
     
-                    responseReturn(res, 200, { redirect: 0,token, message: "Login Success" });
+                    responseReturn(res, 200, { redirect: 0, token, message: "Login Success" });
                 } else {
-                    responseReturn(res, 401, { redirect: 0,error: "Invalid Credentials, Please try Again" });
+                    responseReturn(res, 401, { redirect: 0, error: "Invalid Credentials, Please try Again" });
                 }
             } else {
-                responseReturn(res, 404, { redirect: 0,error: "Credential not found" });
+                responseReturn(res, 404, { redirect: 0, error: "Credential not found" });
             }
         } catch (error) {
-            console.error("Login Error:", error); // Log the error for debugging
-            responseReturn(res, 500, { redirect: 0,error: "Server error, please try again later." });
+            console.error("Login Error:", error);
+            responseReturn(res, 500, { redirect: 0, error: "Server error, please try again later." });
         }
     };
+    
     
 
 
