@@ -176,10 +176,12 @@ class categoryController {
   
       console.log('Voucher is valid');
       return responseReturn(res, 200, {
+        v_id: voucher._id,
         message: 'Voucher is valid',
         valid : true,
         discountType: voucher.discountType,
-        value: voucher.value
+        value: voucher.value,
+        code: voucher.code
       });
     } catch (error) {
       console.error('Error validating voucher:', error);

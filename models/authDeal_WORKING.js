@@ -1,6 +1,5 @@
 const { Schema, model } = require("mongoose");
 const ListingModel = require('../models/listingModel'); // Import the Listing model
-const Voucher = require('../models/voucher'); // Import the Listing model
 
 const authorSchema = new Schema(
   {
@@ -30,8 +29,6 @@ const authorSchema = new Schema(
       type: String,
     },
     voucher: {
-      code: { type: String, required: true },
-      v_id: { type: String, required: true },
       valid: { type: Boolean, required: true },
       discountType: { type: String, enum: ['percentage', 'fixed'], required: true },
       value: { type: Number, required: true }
@@ -46,7 +43,7 @@ authorSchema.pre("save", async function (next) {
     // Set the isRedeemed field to true for the associated voucher
     try {
       await Voucher.findOneAndUpdate(
-        { v_id: this.voucher.v_id ,code: this.voucher.code, isRedeemed: false }, // Ensure it's not already redeemed
+        { code: this.voucher.code, isRedeemed: false }, // Ensure it's not already redeemed
         { $set: { isRedeemed: true } }
       );
       next();

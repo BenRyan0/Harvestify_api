@@ -2,6 +2,7 @@ const authorModel = require('../../models/authDeal');
 const traderDeal = require('../../models/traderDeal');
 const cardModel = require('../../models/cardModel');
 const listingModel = require('../../models/listingModel');
+const voucherModel = require('../../models/voucher');
 const axios = require('axios')
 require("dotenv").config();
 const moment = require('moment');
@@ -175,8 +176,125 @@ class dealController {
     // };
 
 
+    // place_deal = async (req, res) => {
+    //     console.log("TAE")
+    //     console.log(req.body);
+    //     const {
+    //         price,
+    //         listing,
+    //         listing_,
+    //         shipping_fee,
+    //         shippingInfo,
+    //         shippingMethod,
+    //         userId,
+    //         mapsLink,
+    //         distance,
+    //         voucher
+    //     } = req.body;
+    
+    //     console.log(req.body)
+    
+    //     // Normalize `listing` to ensure it's an array with one item
+    //     const normalizedListing = Array.isArray(listing) ? listing : [listing];
+    
+    //     const tempDate = moment(Date.now()).format('LLL');
+    //     let authorDealData = [];
+    //     let cardId = [];
+    //     let traderDealListing = [];
+    
+    //     try {
+    //         // Check if the user has already placed a deal for any of the listings
+    //         for (const item of normalizedListing) {
+    //             const { listingInfo } = item;
+    //             const existingDeal = await traderDeal.findOne({
+    //                 traderId: userId,
+    //                 'listing._id': listingInfo._id, // Assuming the listing item has a unique `_id`
+    //                 paymentStatus: { $ne: 'completed' } // Ensure it's not already completed
+    //             });
+    
+    //             if (existingDeal) {
+    //                 console.log("NAA NA")
+    //                 return responseReturn(res, 404, {
+    //                     message: `You have already placed a deal for this listing: ${listingInfo.name}.`
+    //                 });
+    //             }
+    //         }
+    
+    //         // Process the single normalized listing
+    //         normalizedListing.forEach((item) => {
+    //             const { listingInfo, quantity } = item;
+    //             let tempPro = { ...listingInfo, quantity }; // Add quantity to the product info
+    //             traderDealListing.push(tempPro);
+    
+    //             if (item._id) {
+    //                 cardId.push(item._id); // Collect card IDs for later deletion
+    //             }
+    //         });
+    
+    //         console.log(voucher)
+    //         // Create the trader deal
+    //         const order = await traderDeal.create({
+    //             traderId: userId,
+    //             shippingInfo,
+    //             listing: traderDealListing,
+    //             price: price,
+    //             shipping_fee,
+    //             mapsLink,
+    //             paymentStatus: 'pending',
+    //             shippingMethod,
+    //             shipPickUpStatus: 'pending',
+    //             date: tempDate,
+    //             shipping_distance: distance,
+    //             voucher: voucher
+    //         });
+    //         console.log("asdasdasd----------------->")
+    
+    //         console.log(voucher)
+    //         // Prepare author deal data
+    //         authorDealData.push({
+    //             dealId: order.id,
+    //             sellerId: traderDealListing[0].sellerId,
+    //             listing: traderDealListing,
+    //             listing_: listing_,
+    //             mapsLink,
+    //             price: price,
+    //             shipping_fee,
+    //             paymentStatus: 'unpaid',
+    //             shippingInfo: shippingInfo,
+    //             shippingMethod,
+    //             shipPickUpStatus: 'pending',
+    //             date: tempDate,
+    //             shipping_distance: distance,
+    //             voucher: voucher
+    //         });
+    
+    //         // Save author deal data
+    //         await authorModel.insertMany(authorDealData);
+    
+    //         // Remove card items
+    //         for (const id of cardId) {
+    //             await cardModel.findByIdAndDelete(id);
+    //         }
+    
+    //         setTimeout(() => {
+    //             this.paymentCheck(order.id);
+    //         }, 15000);
+    
+    //         responseReturn(res, 200, {
+    //             message: "Order placed successfully",
+    //             orderId: order.id
+    //         });
+    //     } catch (error) {
+    //         console.log(error.message);
+    //         responseReturn(res, 500, {
+    //             message: "An error occurred while placing the order",
+    //             error: error.message
+    //         });
+    //     }
+    // };
+
     place_deal = async (req, res) => {
-        console.log("TAE")
+        console.log("Placing Deal");
         console.log(req.body);
         const {
             price,
@@ -187,14 +305,11 @@ class dealController {
             shippingMethod,
             userId,
             mapsLink,
-            distance
+            distance,
+            voucher,
         } = req.body;
     
-        console.log(req.body)
-    
-        // Normalize `listing` to ensure it's an array with one item
         const normalizedListing = Array.isArray(listing) ? listing : [listing];
-    
         const tempDate = moment(Date.now()).format('LLL');
         let authorDealData = [];
         let cardId = [];
@@ -207,18 +322,18 @@ class dealController {
                 const existingDeal = await traderDeal.findOne({
                     traderId: userId,
                     'listing._id': listingInfo._id, // Assuming the listing item has a unique `_id`
-                    paymentStatus: { $ne: 'completed' } // Ensure it's not already completed
+                    paymentStatus: { $ne: 'completed' }, // Ensure it's not already completed
                 });
     
                 if (existingDeal) {
-                    console.log("NAA NA")
+                    console.log("Existing deal found");
                     return responseReturn(res, 404, {
-                        message: `You have already placed a deal for this listing: ${listingInfo.name}.`
+                        message: `You have already placed a deal for this listing: ${listingInfo.name}.`,
                     });
                 }
             }
     
-            // Process the single normalized listing
+            // Process the listings
             normalizedListing.forEach((item) => {
                 const { listingInfo, quantity } = item;
                 let tempPro = { ...listingInfo, quantity }; // Add quantity to the product info
@@ -229,8 +344,22 @@ class dealController {
                 }
             });
     
+            // Check if the voucher exists and is not already redeemed
+            if (voucher && voucher.code) {
+                const existingVoucher = await voucherModel.findOne({
+                    code: voucher.code,
+                    isRedeemed: false,
+                });
+    
+                if (!existingVoucher) {
+                    return responseReturn(res, 400, {
+                        message: "Invalid or already redeemed voucher.",
+                    });
+                }
+            }
+    
             // Create the trader deal
-            const order = await traderDeal.create({
+            const order = new traderDeal({
                 traderId: userId,
                 shippingInfo,
                 listing: traderDealListing,
@@ -241,8 +370,11 @@ class dealController {
                 shippingMethod,
                 shipPickUpStatus: 'pending',
                 date: tempDate,
-                shipping_distance: distance
+                shipping_distance: distance,
+                voucher: voucher,
             });
+    
+            await order.save(); // This triggers the `pre('save')` middleware in the traderDeal schema
     
             // Prepare author deal data
             authorDealData.push({
@@ -258,10 +390,11 @@ class dealController {
                 shippingMethod,
                 shipPickUpStatus: 'pending',
                 date: tempDate,
-                shipping_distance: distance
+                shipping_distance: distance,
+                voucher: voucher,
             });
     
-            // Save author deal data
+            // Save author deal data (this will also trigger the `pre('save')` middleware in the authorModel schema)
             await authorModel.insertMany(authorDealData);
     
             // Remove card items
@@ -269,19 +402,20 @@ class dealController {
                 await cardModel.findByIdAndDelete(id);
             }
     
+            // Payment check (asynchronous, simulated with a timeout)
             setTimeout(() => {
                 this.paymentCheck(order.id);
             }, 15000);
     
             responseReturn(res, 200, {
                 message: "Order placed successfully",
-                orderId: order.id
+                orderId: order.id,
             });
         } catch (error) {
-            console.log(error.message);
+            console.error(error.message);
             responseReturn(res, 500, {
                 message: "An error occurred while placing the order",
-                error: error.message
+                error: error.message,
             });
         }
     };
