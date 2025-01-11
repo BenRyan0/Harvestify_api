@@ -14,7 +14,7 @@ const server = http.createServer(app)
 
 app.use(
   cors({
-    origin: process.env.MODE === 'pro' ? [process.env.client_trader_production_url, process.env.client_admin_production_url] : ['http://localhost:3000','http://localhost:3001'],
+    origin: process.env.MODE === 'pro' ? [process.env.client_trader_production_url, process.env.client_admin_production_url,'http://localhost:3000','http://localhost:3001'] : ['http://localhost:3000','http://localhost:3001'],
     credentials: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
@@ -26,7 +26,7 @@ app.use(
 
 const io =socket(server,{
   cors: {
-    origin: process.env.MODE === 'pro' ? [process.env.client_trader_production_url, process.env.client_admin_production_url] : ['http://localhost:3000','http://localhost:3001'],
+    origin: process.env.MODE === 'pro' ? [process.env.client_trader_production_url, process.env.client_admin_production_url,'http://localhost:3000','http://localhost:3001'] : ['http://localhost:3000','http://localhost:3001'],
     credentials: true,
   }
 })

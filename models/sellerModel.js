@@ -3,6 +3,10 @@ const Listing = require("../models/listingModel"); // Import your Listing model
 
 const sellerSchema = new Schema(
   {
+    name: {
+      type: String,
+      // required: true,
+    },
     firstName: {
       type: String,
       required: true,
@@ -136,9 +140,11 @@ sellerSchema.index(
     lastName: "text",
     email: "text",
     associationName: "text",
+    name: "text",
   },
   {
     weights: {
+      name: 7,
       firstName: 6,
       lastName: 5,
       email: 4,
