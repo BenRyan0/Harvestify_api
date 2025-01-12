@@ -531,6 +531,7 @@ trader_register = async (req, res) => {
           clusterInfo: {
             clusterName: associationName,
           },
+          name: `${firstName} ${lastName}`,
         });
 
         // Create associated chat model

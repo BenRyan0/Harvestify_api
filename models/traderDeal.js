@@ -42,11 +42,11 @@ const traderDeal = new Schema({
         type: String,
     },
     voucher: {
-        code: { type: String, required: true },
-        v_id: { type: String, required: true },
-        valid: { type: Boolean, required: true },
-        discountType: { type: String, enum: ['percentage', 'fixed'], required: true },
-        value: { type: Number, required: true }
+        code: { type: String },
+        v_id: { type: String },
+        valid: { type: Boolean },
+        discountType: { type: String, enum: ['percentage', 'fixed'] },
+        value: { type: Number }
     },
     shipping_distance: { type: Number }
 }, {timestamps: true});

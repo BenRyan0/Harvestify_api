@@ -30,11 +30,11 @@ const authorSchema = new Schema(
       type: String,
     },
     voucher: {
-      code: { type: String, required: true },
-      v_id: { type: String, required: true },
-      valid: { type: Boolean, required: true },
-      discountType: { type: String, enum: ['percentage', 'fixed'], required: true },
-      value: { type: Number, required: true }
+      code: { type: String, },
+      v_id: { type: String, },
+      valid: { type: Boolean, },
+      discountType: { type: String, enum: ['percentage', 'fixed'], },
+      value: { type: Number, }
     },
   },
   { timestamps: true }
@@ -58,21 +58,31 @@ authorSchema.pre("save", async function (next) {
   }
 });
 
-// Pre-save middleware to check and update listings if shipPickUpStatus is "confirmed"
 authorSchema.pre("save", async function (next) {
-  if (this.isModified("shipPickUpStatus") && this.shipPickUpStatus === "confirmed") {
+  // Check if shipPickUpStatus was modified
+  if (this.isModified("shipPickUpStatus")) {
     try {
-      // Update the `isAvailable` field of all associated listings
-      await ListingModel.updateMany(
-        { _id: { $in: this.listing_ } }, // Use the `listing` array (assuming it's an array of ObjectIds)
-        { $set: { isAvailable: false } }
-      );
-      next();
+      // If shipPickUpStatus is "confirmed", set listings to not available
+      if (this.shipPickUpStatus === "confirmed") {
+        await ListingModel.updateMany(
+          { _id: { $in: this.listing_ } }, // Use the `listing_` array (array of ObjectIds)
+          { $set: { isAvailable: false } }
+        );
+      }
+      // If shipPickUpStatus is "rejected", set listings to available
+      else if (this.shipPickUpStatus === "rejected") {
+        await ListingModel.updateMany(
+          { _id: { $in: this.listing_ } }, // Use the `listing_` array
+          { $set: { isAvailable: true } }
+        );
+      }
+
+      next(); // Proceed to save
     } catch (err) {
-      next(err);
+      next(err); // Pass any errors to the next middleware
     }
   } else {
-    next();
+    next(); // If shipPickUpStatus wasn't modified, proceed to save
   }
 });
 
