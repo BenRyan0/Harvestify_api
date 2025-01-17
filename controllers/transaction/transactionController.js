@@ -450,13 +450,14 @@ class transactionController {
         }
 
         console.log("04")
+        
         // Configure Cloudinary inside the method
         cloudinary.config({
-            cloud_name: process.env.CLOUD_NAME,
-            api_key: process.env.API_KEY,
-            api_secret: process.env.API_SECRET,
-            secure: true,
-        });
+          cloud_name: process.env.cloud_name,
+          api_key: process.env.api_key,
+          api_secret: process.env.api_secret,
+          secure: true,
+      });
 
         console.log("05")
         try {
@@ -617,11 +618,11 @@ proof_submit2 = async (req, res) => {
 
       // Configure Cloudinary inside the method
       cloudinary.config({
-          cloud_name: process.env.CLOUD_NAME,
-          api_key: process.env.API_KEY,
-          api_secret: process.env.API_SECRET,
-          secure: true,
-      });
+        cloud_name: process.env.cloud_name,
+        api_key: process.env.api_key,
+        api_secret: process.env.api_secret,
+        secure: true,
+    });
 
       try {
           // Resize and upload the image to Cloudinary
