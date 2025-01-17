@@ -114,27 +114,149 @@ class authControllers {
     }
   };
 
-  seller_register = async (req, res) => {
-    console.log("SELLER REGISTRATION")
-    try {
-      const { email } = req.body;
-      // Check if the email already exists
-      const getSeller = await sellerModel.findOne({ email });
-      if (getSeller) {
-        return responseReturn(res, 404, {
-          error: "Email is already used. Please login instead.",
-        });
-      }
+  // seller_register = async (req, res) => {
+  //   console.log("SELLER REGISTRATION")
+  //   try {
+  //     const { email } = req.body;
+  //     // Check if the email already exists
+  //     const getSeller = await sellerModel.findOne({ email });
+  //     if (getSeller) {
+  //       return responseReturn(res, 404, {
+  //         error: "Email is already used. Please login instead.",
+  //         requestMessage: "Email is already used. Please login instead."
+  //       });
+  //     }
   
+  //     const form = new formidable.IncomingForm({ multiples: true });
+  //     form.parse(req, async (err, fields, files) => {
+  //       if (err) {
+  //         console.error("Form parsing error:", err);
+  //         return responseReturn(res, 400, { error: "Form parsing error",requestMessage: "Trader Application Request has failed please try again." });
+  //       }
+  
+  //       // Destructure fields and files'
+  //       console.log("ASdasd")
+  //       let {
+  //         firstName,
+  //         middleName,
+  //         lastName,
+  //         birthDate,
+  //         sex,
+  //         email,
+  //         phoneNumber,
+  //         associationName,
+  //         associationloc_street,
+  //         associationloc_barangay,
+  //         associationloc_province,
+  //         associationloc_municipalitycity,
+  //         password,
+  //       } = fields;
+  
+  //       const {
+  //         associationImage,
+  //         profileImage,
+  //         validId_img,
+  //         credential_img01,
+  //         credential_img02,
+  //       } = files;
+  
+  //       // Configure Cloudinary
+  //       cloudinary.config({
+  //         cloud_name: process.env.cloud_name,
+  //         api_key: process.env.api_key,
+  //         api_secret: process.env.api_secret,
+  //         secure: true,
+  //       });
+  
+  //       try {
+  //         // Helper function to resize and upload images
+  //         const resizeAndUploadImage = async (imageFile, folder) => {
+  //           const resizedImage = await this.resizeImage(imageFile.filepath || imageFile.path);
+  //           return cloudinary.uploader.upload(resizedImage, { folder });
+  //         };
+  
+  //         // Upload all images in parallel
+  //         const [
+  //           associationImageURL,
+  //           profileImageURL,
+  //           validIdURL,
+  //           credential1URL,
+  //           credential2URL,
+
+  //         ] = await Promise.all([
+  //           resizeAndUploadImage(associationImage, "sellersCredentials"),
+  //           resizeAndUploadImage(profileImage, "sellersCredentials"),
+  //           resizeAndUploadImage(validId_img, "sellersCredentials"),
+  //           resizeAndUploadImage(credential_img01, "sellersCredentials"),
+  //           resizeAndUploadImage(credential_img02, "sellersCredentials"),
+            
+  //         ]);
+  
+  //         // Create seller
+  //         const hashedPassword = await bcrypt.hash(password, 10);
+  //         const seller = await sellerModel.create({
+  //           name: firstName + lastName,
+  //           firstName,
+  //           middleName,
+  //           lastName,
+  //           birthDate: new Date(birthDate),
+  //           sex,
+  //           phoneNumber,
+  //           email,
+  //           password: hashedPassword, // Hash password before storing
+  //           associationName,
+  //           associationloc_street,
+  //           associationloc_barangay,
+  //           associationloc_province,
+  //           associationloc_municipalitycity,
+  //           associationImage: associationImageURL.url,
+  //           profileImage: profileImageURL.url,
+  //           validId_img: validIdURL.url,
+  //           credential_img01: credential1URL.url,
+  //           credential_img02: credential2URL.url,
+  //           method: "manually",
+  //           clusterInfo:{
+  //             clusterName: associationName
+  //           }
+  //         });
+  
+  //         // Create associated chat model
+  //         await sellerCustomerModel.create({ myId: seller.id });
+  
+  //         // Create token and send it in the cookie
+  //         const token = await createToken({ id: seller.id, role: seller.role });
+  //         res.cookie("accessToken", token, {
+  //           expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiry
+  //         });
+  
+  //         // Return success response
+  //         responseReturn(res, 201, {
+  //           // token,
+  //           message: "Request Recorded.",
+  //           requestMessage: "Trader Application Request Recorded."
+  //         });
+  //       } catch (error) {
+  //         console.error("Image upload or seller creation error:", error);
+  //         return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again." });
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error("Registration error:", error);
+  //     return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again." });
+  //   }
+  // };
+  
+  seller_register = async (req, res) => {
+    console.log("SELLER REGISTRATION");
+    try {
       const form = new formidable.IncomingForm({ multiples: true });
       form.parse(req, async (err, fields, files) => {
         if (err) {
           console.error("Form parsing error:", err);
-          return responseReturn(res, 400, { error: "Form parsing error" });
+          return responseReturn(res, 400, { error: "Form parsing error", requestMessage: "Seller Application Request has failed. Please try again." });
         }
   
-        // Destructure fields and files'
-        console.log("ASdasd")
+        // Destructure fields and files
         let {
           firstName,
           middleName,
@@ -157,8 +279,16 @@ class authControllers {
           validId_img,
           credential_img01,
           credential_img02,
-          credential_img03,
         } = files;
+  
+        // Check if the email already exists
+        const getSeller = await sellerModel.findOne({ email });
+        if (getSeller) {
+          return responseReturn(res, 404, {
+            error: "Email is already used. Please login instead.",
+            requestMessage: "Email is already used. Please login instead.",
+          });
+        }
   
         // Configure Cloudinary
         cloudinary.config({
@@ -182,14 +312,12 @@ class authControllers {
             validIdURL,
             credential1URL,
             credential2URL,
-            credential3URL
           ] = await Promise.all([
             resizeAndUploadImage(associationImage, "sellersCredentials"),
             resizeAndUploadImage(profileImage, "sellersCredentials"),
             resizeAndUploadImage(validId_img, "sellersCredentials"),
             resizeAndUploadImage(credential_img01, "sellersCredentials"),
             resizeAndUploadImage(credential_img02, "sellersCredentials"),
-            resizeAndUploadImage(credential_img03, "sellersCredentials")
           ]);
   
           // Create seller
@@ -214,11 +342,10 @@ class authControllers {
             validId_img: validIdURL.url,
             credential_img01: credential1URL.url,
             credential_img02: credential2URL.url,
-            credential_img03: credential3URL.url,
             method: "manually",
-            clusterInfo:{
-              clusterName: associationName
-            }
+            clusterInfo: {
+              clusterName: associationName,
+            },
           });
   
           // Create associated chat model
@@ -232,17 +359,17 @@ class authControllers {
   
           // Return success response
           responseReturn(res, 201, {
-            token,
             message: "Request Recorded.",
+            requestMessage: "Seller Application Request Recorded.",
           });
         } catch (error) {
           console.error("Image upload or seller creation error:", error);
-          return responseReturn(res, 500, { error: "Internal server error." });
+          return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Seller Application Request has failed please try again." });
         }
       });
     } catch (error) {
       console.error("Registration error:", error);
-      return responseReturn(res, 500, { error: "Internal server error." });
+      return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Seller Application Request has failed please try again." });
     }
   };
   
@@ -428,14 +555,14 @@ trader_register = async (req, res) => {
     form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error("Form parsing error:", err);
-        return responseReturn(res, 400, { error: "Form parsing error" });
+        return responseReturn(res, 400, { error: "Form parsing error" ,requestMessage: "Form parsing error. Please try again."});
       }
 
       // Extract email from fields
       const { email } = fields;
 
       if (!email) {
-        return responseReturn(res, 400, { error: "Email is required." });
+        return responseReturn(res, 400, { error: "Email is required.", requestMessage: "Email is required. Please try again."});
       }
 
       try {
@@ -444,6 +571,7 @@ trader_register = async (req, res) => {
         if (getTrader) {
           return responseReturn(res, 409, {
             error: "Email is already used. Please login instead.",
+            requestMessage: "Email is already used. Please login instead."
           });
         }
 
@@ -469,7 +597,6 @@ trader_register = async (req, res) => {
           validId_img,
           credential_img01,
           credential_img02,
-          credential_img03,
         } = files;
 
         // Configure Cloudinary
@@ -502,7 +629,7 @@ trader_register = async (req, res) => {
           resizeAndUploadImage(validId_img, "tradersCredentials"),
           resizeAndUploadImage(credential_img01, "tradersCredentials"),
           resizeAndUploadImage(credential_img02, "tradersCredentials"),
-          resizeAndUploadImage(credential_img03, "tradersCredentials"),
+         
         ]);
 
         // Create seller
@@ -526,7 +653,6 @@ trader_register = async (req, res) => {
           validId_img: validIdURL.url,
           credential_img01: credential1URL.url,
           credential_img02: credential2URL.url,
-          credential_img03: credential3URL.url,
           method: "manually",
           clusterInfo: {
             clusterName: associationName,
@@ -549,15 +675,16 @@ trader_register = async (req, res) => {
         responseReturn(res, 201, {
           token,
           message: "Trader Application Request Recorded.",
+          requestMessage: "Trader Application Request Recorded."
         });
       } catch (error) {
         console.error("Registration error:", error);
-        return responseReturn(res, 500, { error: "Internal server error." });
+        return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again." });
       }
     });
   } catch (error) {
     console.error("Outer registration error:", error);
-    return responseReturn(res, 500, { error: "Internal server error." });
+    return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again."  });
   }
 };
 

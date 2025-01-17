@@ -71,10 +71,10 @@ const sellerSchema = new Schema(
       type: String,
       required: true,
     },
-    credential_img03: {
-      type: String,
-      required: true,
-    },
+    // credential_img03: {
+    //   type: String,
+    //   required: true,
+    // },
     validId_img: {
       type: String,
       required: true,

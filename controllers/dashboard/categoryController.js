@@ -2,6 +2,7 @@ const categoryModel = require("../../models/categoryModel");
 const additionalFeatureModel = require("../../models/additionalFeatureModel");
 const { responseReturn } = require("../../utils/response");
 const cloudinary = require("cloudinary").v2;
+exports.cloudinary = cloudinary;
 const formidable = require("formidable");
 const sharp = require("sharp");
 const fs = require("fs");

@@ -155,7 +155,7 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
         .find({
           sellerId: new ObjectId(id),
         })
-        .limit(5);
+        // .limit(5);
   
       // Add totalSales calculation
       const totalSales = await authorOrder.aggregate([

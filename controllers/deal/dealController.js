@@ -40,7 +40,8 @@ class dealController {
        try {
             const recentOrders = await traderDeal.find({
                 traderId: new ObjectId(userId)
-            }).limit(5)
+            })
+            // .limit(5)
 
             const pendingOrder = await traderDeal.find({
                 traderId: new ObjectId(userId),
@@ -1013,8 +1014,12 @@ class dealController {
     // };
     
     seller_order_status_update = async (req, res) => {
+        console.log("ALLALALLALA")
         const { orderId } = req.params; // ID of the authorDeal
         const { status } = req.body;   // New shipPickUpStatus (e.g., "confirmed")
+        const { transaction } = req.body;   // New shipPickUpStatus (e.g., "confirmed")
+
+        
     
         try {
             // Find the specific authorDeal using the orderId

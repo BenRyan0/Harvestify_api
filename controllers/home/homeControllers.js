@@ -130,7 +130,7 @@ class homeControllers {
 
         // Fetch featured listings where harvestStartDate has not passed the current date (today or future)
         const featuredListings = await listingModel
-          .find({ harvestStartDate: { $gte: currentDate } }) // Only listings with harvestStartDate >= current date
+          .find({ harvestStartDate: { $gte: currentDate }, isAvailable: true  }) // Only listings with harvestStartDate >= current date
           .sort({ createdAt: -1 });
 
       // Fetch the top 9 listings based on seller's rating

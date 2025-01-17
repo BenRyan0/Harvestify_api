@@ -180,6 +180,8 @@ app.use('/api', require('./routes/dashboard/additionalFeatures'));
 app.use('/api', require('./routes/dashboard/voucherRoutes'));
 app.use('/api', require('./routes/dashboard/listingRoute'));
 
+app.use('/api', require('./routes/transaction/transactionRoutes'));
+
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
