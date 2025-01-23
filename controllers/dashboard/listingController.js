@@ -2,6 +2,7 @@ const cloudinary = require("cloudinary").v2;
 const formidable = require("formidable");
 const { responseReturn } = require("../../utils/response");
 const listingModel = require("../../models/listingModel");
+const AuthorDealModel = require("../../models/authDeal");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
@@ -305,7 +306,56 @@ class listingController {
     }
   };
 
+  // listing_update = async (req, res) => {
+  //   let {
+  //     name,
+  //     harvestStartDate,
+  //     harvestEndDate,
+  //     expectedHarvestYield,
+  //     description,
+  //     price,
+  //     clusterName,
+  //     unit,
+  //     yieldUnit,
+  //     sellerDelivery,
+  //     traderPickup,
+  //     listingId,
+  //   } = req.body;
+  //   console.log(req.body);
+
+  //   name = name.trim();
+  //   const slug = name.split(" ").join("-");
+
+  //   try {
+  //     await listingModel.findByIdAndUpdate(listingId, {
+  //       name,
+  //       harvestStartDate,
+  //       harvestEndDate,
+  //       expectedHarvestYield,
+  //       description,
+  //       price,
+  //       clusterName,
+  //       unit,
+  //       yieldUnit,
+  //       sellerDelivery,
+  //       traderPickup,
+  //       slug,
+  //     });
+
+  //     const listing = await listingModel.findById(listingId);
+  //     responseReturn(res, 200, {
+  //       listing,
+  //       message: "Listing Has been Successfully Updated",
+  //     });
+  //   } catch (error) {
+  //     responseReturn(res, 500, {
+  //       error: "Listing Update Has failed",
+  //     });
+  //   }
+  // };
+
   listing_update = async (req, res) => {
+    console.log("TAE")
     let {
       name,
       harvestStartDate,
@@ -321,16 +371,37 @@ class listingController {
       listingId,
     } = req.body;
     console.log(req.body);
-
+  
+    // Trim and generate slug
     name = name.trim();
     const slug = name.split(" ").join("-");
-
+  
     try {
+      // Check if the listing is already part of an active deal in authorDeals
+      const existingDeal = await AuthorDealModel.findOne({
+        listing_: listingId,
+      });
+  
+      if (existingDeal) {
+        // If the listing is part of a deal, prevent editing of harvestEndDate and expectedHarvestYield
+        if (harvestEndDate) {
+          return responseReturn(res, 400, {
+            error: "Cannot edit harvestEndDate as this listing is part of an active deal.",
+          });
+        }
+        if (expectedHarvestYield) {
+          return responseReturn(res, 400, {
+            error: "Cannot edit expectedHarvestYield as this listing is part of an active deal.",
+          });
+        }
+      }
+  
+      // Proceed to update the listing (if no active deal or if harvestEndDate and expectedHarvestYield are not being edited)
       await listingModel.findByIdAndUpdate(listingId, {
         name,
         harvestStartDate,
-        harvestEndDate,
-        expectedHarvestYield,
+        harvestEndDate, // This won't be updated if part of a deal
+        expectedHarvestYield, // This won't be updated if part of a deal
         description,
         price,
         clusterName,
@@ -340,19 +411,24 @@ class listingController {
         traderPickup,
         slug,
       });
-
+  
+      // Fetch the updated listing
       const listing = await listingModel.findById(listingId);
+  
+      // Return success response
       responseReturn(res, 200, {
         listing,
         message: "Listing Has been Successfully Updated",
       });
     } catch (error) {
+      console.log(error)
+      // Handle any errors during the process
       responseReturn(res, 500, {
         error: "Listing Update Has failed",
       });
     }
   };
-
+  
 
   listing_image_update = async(req, res)=>{
     // const form = formidable.IncomingForm({multiples: true})
@@ -739,6 +815,44 @@ class listingController {
   //     });
   //   }
   // };
+  takedown_listing = async (req, res) => {
+    console.log("TAE")
+    const { listingId } = req.body;
+  
+    try {
+      // Check if the listing is part of an active deal in authorDeals
+      const existingDeal = await AuthorDealModel.findOne({
+        listing_: listingId,
+      });
+  
+      if (existingDeal) {
+        // If the listing is part of a deal, prevent deletion
+        return responseReturn(res, 400, {
+          error: "Cannot delete this listing as it is part of an active deal.",
+        });
+      }
+  
+      // If no active deal is found, proceed to delete the listing
+      const deletedListing = await listingModel.findByIdAndDelete(listingId);
+  
+      if (!deletedListing) {
+        return responseReturn(res, 404, {
+          error: "Listing not found or already deleted.",
+        });
+      }
+  
+      // Return success response
+      responseReturn(res, 200, {
+        message: "Listing has been successfully deleted.",
+      });
+    } catch (error) {
+      // Handle any errors during the process
+      responseReturn(res, 500, {
+        error: "Listing Deletion Failed",
+      });
+    }
+  };
+  
 }
 
 module.exports = new listingController();

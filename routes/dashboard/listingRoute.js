@@ -15,10 +15,12 @@ router.post(
   authMiddleware,
   listingController.listing_update
 );
+// Backend Route
 router.post(
-  "/listing-image-update",
+  "/listing-takedown",
   authMiddleware,
-  listingController.listing_image_update
+  listingController.takedown_listing
 );
+
 
 module.exports = router;
