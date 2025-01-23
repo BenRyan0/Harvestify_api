@@ -19,4 +19,7 @@ router.post('/trader/trader-handoff-confirm',transactionController.trader_handof
 router.post('/trader/final-payment-add',transactionController.proof_submit2)
 
 
+router.delete('/trader/traderDeal-delete/:traderDealId',transactionController.deleteTraderDeal)
+
+
 module.exports = router;

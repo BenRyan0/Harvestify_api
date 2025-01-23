@@ -1,6 +1,7 @@
 const categoryModel = require("../../models/categoryModel");
 const listingModel = require("../../models/listingModel");
 const reviewModel = require("../../models/reviewModel")
+const Transaction = require("../../models/Transaction/Transaction")
 const { responseReturn } = require("../../utils/response");
 const queryListings = require("../../utils/queryListings")
 const moment = require('moment');
@@ -534,12 +535,398 @@ class homeControllers {
 //  }
  
 
+// submit_review = async (req, res) => {
+//   const { name, rating, review, listingId, sellerId } = req.body;
+
+//   try {
+//     // Create a new review
+//     await reviewModel.create({
+//       listingId,
+//       sellerId,
+//       name,
+//       rating,
+//       review,
+//       date: moment(Date.now()).format('LL'), // Corrected moment usage
+//     });
+
+//     let rate = 0;
+
+//     // Fetch all reviews for the seller
+//     const reviews = await reviewModel.find({ sellerId });
+
+//     // Debugging: Check if reviews array is valid
+//     if (!reviews || reviews.length === 0) {
+//       throw new Error("No reviews found for the seller");
+//     }
+
+//     // Calculate total rating with validation
+//     for (let i = 0; i < reviews.length; i++) {
+//       if (reviews[i] && typeof reviews[i].rating === "number") {
+//         rate += reviews[i].rating;
+//       } else {
+//         console.warn(`Invalid review object at index ${i}:`, reviews[i]);
+//       }
+//     }
+
+//     let listingRating = 0;
+
+//     // Avoid division by zero
+//     if (reviews.length > 0) {
+//       listingRating = parseFloat((rate / reviews.length).toFixed(1)); // Ensure it's a number
+//     }
+
+//     // Update seller's rating
+//     await sellerModel.findByIdAndUpdate(sellerId, {
+//       rating: listingRating,
+//     });
+
+//     // Uncomment if you need to update the listing's rating
+//     await listingModel.findByIdAndUpdate(listingId, {
+//       rating: listingRating,
+//     });
+
+//     // Send success response
+//     responseReturn(res, 201, { message: "Review Submitted" });
+//   } catch (error) {
+//     console.error("Error submitting review:", error.message);
+
+//     // Send error response
+//     res.status(500).json({ error: "An error occurred while submitting the review" });
+//   }
+// };
+
+
+// submit_review = async (req, res) => {
+//   const { name, rating, review, listingId, sellerId, transactionId } = req.body;
+//   console.log(req.body)
+
+//   try {
+//     // Validate input
+//     if (!name || !rating || !review || !listingId || !sellerId || !transactionId) {
+//       return res.status(400).json({ error: "All fields are required." });
+//     }
+
+//     // Ensure rating is between 1 and 5
+//     if (rating < 1 || rating > 5) {
+//       return res.status(400).json({ error: "Rating must be between 1 and 5." });
+//     }
+
+//     // Check if the transaction is completed
+//     const transaction = await Transaction.findById(transactionId);
+//     console.log("03")
+//     if (!transaction) {
+//       return res.status(404).json({ error: "Transaction not found." });
+//     }
+
+//     if (transaction.fullPaymentStatus !== "Confirmed") {
+//       return res.status(400).json({ error: "Transaction is not completed." });
+//     }
+
+//     // Ensure transaction matches the provided listing and seller
+//     if (
+//       transaction.sellerId.toString() !== sellerId ||
+//       transaction.listingId.toString() !== listingId
+//     ) {
+//       return res.status(400).json({
+//         error: "Transaction details do not match the provided seller or listing.",
+//       });
+//     }
+
+//     // Create a new review
+//     await reviewModel.create({
+//       transactionId,
+//       listingId,
+//       sellerId,
+//       name,
+//       rating,
+//       review,
+//       date: moment(Date.now()).format('LL'), // Corrected moment usage
+//     });
+
+//     // Calculate total rating for the seller
+//     let rate = 0;
+//     const reviews = await reviewModel.find({ sellerId });
+
+//     // Validate reviews array
+//     if (!reviews || reviews.length === 0) {
+//       throw new Error("No reviews found for the seller.");
+//     }
+
+//     for (let i = 0; i < reviews.length; i++) {
+//       if (reviews[i] && typeof reviews[i].rating === "number") {
+//         rate += reviews[i].rating;
+//       } else {
+//         console.warn(`Invalid review object at index ${i}:`, reviews[i]);
+//       }
+//     }
+
+//     // Calculate the average rating
+//     let listingRating = 0;
+//     if (reviews.length > 0) {
+//       listingRating = parseFloat((rate / reviews.length).toFixed(1));
+//     }
+
+//     // Update the seller's rating
+//     await sellerModel.findByIdAndUpdate(sellerId, {
+//       rating: listingRating,
+//     });
+
+//     // Optionally update the listing's rating (if needed)
+//     await listingModel.findByIdAndUpdate(listingId, {
+//       rating: listingRating,
+//     });
+
+//     // Send success response
+//     return res.status(201).json({ message: "Review Submitted" });
+//   } catch (error) {
+//     console.error("Error submitting review:", error.message);
+//     // Send error response
+//     return res.status(500).json({ error: "An error occurred while submitting the review" });
+//   }
+// };
+
+// submit_review = async (req, res) => {
+//   const { name, rating, review, listingId, sellerId, transactionId } = req.body;
+//   console.log(req.body);
+
+//   try {
+//     // Validate input
+//     console.log("01")
+//     if (!name || !rating || !review || !listingId || !sellerId || !transactionId) {
+//       return res.status(400).json({ error: "All fields are required." });
+//     }
+
+//     console.log("02")
+//     // Ensure rating is between 1 and 5
+//     if (rating < 1 || rating > 5) {
+//       return res.status(400).json({ error: "Rating must be between 1 and 5." });
+//     }
+
+//     console.log("03")
+//     // Check if the transaction exists and is completed
+//     const transaction = await Transaction.findById(transactionId);
+//     if (!transaction) {
+//       return res.status(404).json({ error: "Transaction not found." });
+//     }
+
+//     console.log("04")
+//     if (transaction.fullPaymentStatus !== "Confirmed") {
+//       return res.status(400).json({ error: "Transaction is not completed." });
+//     }
+
+//     console.log("05")
+//     // Ensure the transaction matches the provided listing and seller
+//     if (
+//       transaction.sellerId.toString() !== sellerId ||
+//       transaction.listingId.toString() !== listingId
+//     ) {
+//       return res.status(400).json({
+//         error: "Transaction details do not match the provided seller or listing.",
+//       });
+
+//       console.log("06")
+//     }
+
+//     console.log("07")
+//     // Check if a review already exists for this transaction
+//     const existingReview = await reviewModel.findOne({ transactionId :transactionId });
+//     if (existingReview) {
+//       console.log("7.5")
+//       return res.status(400).json({ error: "You have already submitted a review for this transaction." });
+//     }
+
+//     console.log("08")
+//     // Create a new review
+//     await reviewModel.create({
+//       transactionId,
+//       listingId,
+//       sellerId,
+//       name,
+//       rating,
+//       review,
+//       date: moment(Date.now()).format('LL'), // Corrected moment usage
+//     });
+
+//     // Calculate total rating for the seller
+//     let rate = 0;
+//     const reviews = await reviewModel.find({ sellerId });
+
+//     // Validate reviews array
+//     if (!reviews || reviews.length === 0) {
+//       throw new Error("No reviews found for the seller.");
+//     }
+
+//     for (let i = 0; i < reviews.length; i++) {
+//       if (reviews[i] && typeof reviews[i].rating === "number") {
+//         rate += reviews[i].rating;
+//       } else {
+//         console.warn(`Invalid review object at index ${i}:`, reviews[i]);
+//       }
+//     }
+
+//     // Calculate the average rating
+//     let listingRating = 0;
+//     if (reviews.length > 0) {
+//       listingRating = parseFloat((rate / reviews.length).toFixed(1));
+//     }
+
+//     // Update the seller's rating
+//     await sellerModel.findByIdAndUpdate(sellerId, {
+//       rating: listingRating,
+//     });
+
+//     // Optionally update the listing's rating (if needed)
+//     await listingModel.findByIdAndUpdate(listingId, {
+//       rating: listingRating,
+//     });
+
+//     // Send success response
+//     return res.status(201).json({ message: "Review Submitted" });
+//   } catch (error) {
+//     console.error("Error submitting review:", error.message);
+//     // Send error response
+//     return responseReturn(res, 400, { error: "Invalid listingId or sellerId." });
+//     // return res.status(500).json({ error: "An error occurred while submitting the review" });
+//   }
+// };
+
+
+// submit_review = async (req, res) => {
+//   const { name, rating, review, listingId, sellerId, transactionId } = req.body;
+//   console.log(req.body);
+
+//   try {
+//     // Validate input
+//     if (!name || !rating || !review || !listingId || !sellerId || !transactionId) {
+//       return responseReturn(res, 400, { error: "All fields are required." });
+//     }
+
+//     // Ensure rating is between 1 and 5
+//     if (rating < 1 || rating > 5) {
+//       return responseReturn(res, 400, { error: "Rating must be between 1 and 5." });
+//     }
+
+//     // Check if the transaction exists and is completed
+//     const transaction = await Transaction.findById(transactionId);
+//     if (!transaction) {
+//       return responseReturn(res, 404, { error: "Transaction not found." });
+//     }
+
+//     if (transaction.fullPaymentStatus !== "Confirmed") {
+//       return responseReturn(res, 400, { error: "Transaction is not completed." });
+//     }
+
+//     // Ensure the transaction matches the provided listing and seller
+//     if (
+//       transaction.sellerId.toString() !== sellerId ||
+//       transaction.listingId.toString() !== listingId
+//     ) {
+//       return responseReturn(res, 400, { error: "Transaction details do not match the provided seller or listing." });
+//     }
+
+//     // Check if a review already exists for this transaction
+//     const existingReview = await reviewModel.findOne({ transactionId });
+//     if (existingReview) {
+//       console.log("01")
+//       return responseReturn(res, 400, { error: "You have already submitted a review for this transaction." });
+      
+//     }
+
+//     // Create a new review
+//     await reviewModel.create({
+//       transactionId,
+//       listingId,
+//       sellerId,
+//       name,
+//       rating,
+//       review,
+//       date: moment(Date.now()).format('LL'), // Corrected moment usage
+//     });
+
+//     // Calculate total rating for the seller
+//     let rate = 0;
+//     const reviews = await reviewModel.find({ sellerId });
+
+//     // Validate reviews array
+//     if (!reviews || reviews.length === 0) {
+//       return responseReturn(res, 400, { error: "No reviews found for the seller." });
+//     }
+
+//     for (let i = 0; i < reviews.length; i++) {
+//       if (reviews[i] && typeof reviews[i].rating === "number") {
+//         rate += reviews[i].rating;
+//       } else {
+//         console.warn(`Invalid review object at index ${i}:`, reviews[i]);
+//       }
+//     }
+
+//     // Calculate the average rating
+//     let listingRating = 0;
+//     if (reviews.length > 0) {
+//       listingRating = parseFloat((rate / reviews.length).toFixed(1));
+//     }
+
+//     // Update the seller's rating
+//     await sellerModel.findByIdAndUpdate(sellerId, {
+//       rating: listingRating,
+//     });
+
+//     // Optionally update the listing's rating (if needed)
+//     await listingModel.findByIdAndUpdate(listingId, {
+//       rating: listingRating,
+//     });
+
+//     // Send success response
+//     return responseReturn(res, 201, { message: "Review Submitted" });
+//   } catch (error) {
+//     console.error("Error submitting review:", error.message);
+//     // Send error response
+//     return responseReturn(res, 500, { error: "An error occurred while submitting the review" });
+//   }
+// };
+
 submit_review = async (req, res) => {
-  const { name, rating, review, listingId, sellerId } = req.body;
+  const { name, rating, review, listingId, sellerId, transactionId } = req.body;
+  console.log(req.body);
 
   try {
+    // Validate input
+    if (!name || !rating || !review || !listingId || !sellerId || !transactionId) {
+      return responseReturn(res, 400, { error: "All fields are required." });
+    }
+
+    // Ensure rating is between 1 and 5
+    if (rating < 1 || rating > 5) {
+      return responseReturn(res, 400, { error: "Rating must be between 1 and 5." });
+    }
+
+    // Check if the transaction exists and is completed
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction) {
+      return responseReturn(res, 404, { error: "Transaction not found." });
+    }
+
+    if (transaction.fullPaymentStatus !== "Confirmed") {
+      return responseReturn(res, 400, { error: "Transaction is not completed." });
+    }
+
+    // Ensure the transaction matches the provided listing and seller
+    if (
+      transaction.sellerId.toString() !== sellerId ||
+      transaction.listingId.toString() !== listingId
+    ) {
+      return responseReturn(res, 400, { error: "Transaction details do not match the provided seller or listing." });
+    }
+
+    // Check if a review already exists for this transaction
+    const existingReview = await reviewModel.findOne({ transactionId });
+    if (existingReview) {
+      return responseReturn(res, 400, { error: "You have already submitted a review for this transaction." });
+    }
+
     // Create a new review
     await reviewModel.create({
+      transactionId,
       listingId,
       sellerId,
       name,
@@ -548,17 +935,21 @@ submit_review = async (req, res) => {
       date: moment(Date.now()).format('LL'), // Corrected moment usage
     });
 
-    let rate = 0;
+    // Update the transaction's buyerStep and sellerStep
+    await Transaction.findByIdAndUpdate(transactionId, {
+      buyerStep: 8,
+      sellerStep: 7,
+    });
 
-    // Fetch all reviews for the seller
+    // Calculate total rating for the seller
+    let rate = 0;
     const reviews = await reviewModel.find({ sellerId });
 
-    // Debugging: Check if reviews array is valid
+    // Validate reviews array
     if (!reviews || reviews.length === 0) {
-      throw new Error("No reviews found for the seller");
+      return responseReturn(res, 400, { error: "No reviews found for the seller." });
     }
 
-    // Calculate total rating with validation
     for (let i = 0; i < reviews.length; i++) {
       if (reviews[i] && typeof reviews[i].rating === "number") {
         rate += reviews[i].rating;
@@ -567,34 +958,30 @@ submit_review = async (req, res) => {
       }
     }
 
+    // Calculate the average rating
     let listingRating = 0;
-
-    // Avoid division by zero
     if (reviews.length > 0) {
-      listingRating = parseFloat((rate / reviews.length).toFixed(1)); // Ensure it's a number
+      listingRating = parseFloat((rate / reviews.length).toFixed(1));
     }
 
-    // Update seller's rating
+    // Update the seller's rating
     await sellerModel.findByIdAndUpdate(sellerId, {
       rating: listingRating,
     });
 
-    // Uncomment if you need to update the listing's rating
+    // Optionally update the listing's rating (if needed)
     await listingModel.findByIdAndUpdate(listingId, {
       rating: listingRating,
     });
 
     // Send success response
-    responseReturn(res, 201, { message: "Review Submitted" });
+    return responseReturn(res, 201, { message: "Review Submitted" });
   } catch (error) {
     console.error("Error submitting review:", error.message);
-
     // Send error response
-    res.status(500).json({ error: "An error occurred while submitting the review" });
+    return responseReturn(res, 500, { error: "An error occurred while submitting the review" });
   }
 };
-
-
 
 
 // get_reviews = async (req, res) => {
@@ -684,8 +1071,92 @@ submit_review = async (req, res) => {
 
 // }
 
+// get_reviews = async (req, res) => {
+//   const { listingId, sellerId } = req.params;
+//   let { pageNumber } = req.query;
+
+//   // Validate and parse inputs
+//   pageNumber = parseInt(pageNumber) || 1;
+//   const limit = 5;
+//   const skipPage = limit * (pageNumber - 1);
+
+//   // Validate MongoDB ObjectIds
+//   if (!ObjectId.isValid(listingId) || !ObjectId.isValid(sellerId)) {
+//     return responseReturn(res, 400, { error: "Invalid listingId or sellerId." });
+//   }
+
+//   try {
+//     // Fetch aggregated rating data
+//     const getRating = await reviewModel.aggregate([
+//       {
+//         $match: {
+//           listingId: new ObjectId(listingId),
+//           sellerId: new ObjectId(sellerId),
+//           rating: { $not: { $size: 0 } },
+//         },
+//       },
+//       { $unwind: "$rating" },
+//       {
+//         $group: {
+//           _id: "$rating",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     // Initialize rating review array
+//     const rating_review = [
+//       { rating: 5, sum: 0 },
+//       { rating: 4, sum: 0 },
+//       { rating: 3, sum: 0 },
+//       { rating: 2, sum: 0 },
+//       { rating: 1, sum: 0 },
+//     ];
+
+//     // Map ratings to counts
+//     if (Array.isArray(getRating) && getRating.length > 0) {
+//       const ratingMap = new Map(getRating.map((r) => [r._id, r.count]));
+//       rating_review.forEach((r) => {
+//         r.sum = ratingMap.get(r.rating) || 0;
+//       });
+//     }
+
+//     // Fetch all reviews for the total count
+//     const getAll = await reviewModel.find({ listingId });
+
+//     // Fetch paginated reviews
+//     const reviews = await reviewModel
+//       .find({ listingId })
+//       .skip(skipPage)
+//       .limit(limit)
+//       .sort({ createdAt: -1 });
+      
+
+//       console.log(reviews)
+//       console.log(getAll.length)
+//       console.log(rating_review)
+
+
+//     // Send success response
+//     responseReturn(res, 200, {
+//       reviews,
+//       totalReview: getAll.length,
+//       rating_review,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching reviews:", error.message);
+
+//     // Send error response
+//     responseReturn(res, 500, {
+//       error: "Internal Server Error",
+//       message: error.message,
+//     });
+//   }
+// };
+
+
 get_reviews = async (req, res) => {
-  const { listingId, sellerId } = req.params;
+  const { sellerId } = req.params; // Now only sellerId is needed
   let { pageNumber } = req.query;
 
   // Validate and parse inputs
@@ -693,19 +1164,17 @@ get_reviews = async (req, res) => {
   const limit = 5;
   const skipPage = limit * (pageNumber - 1);
 
-  // Validate MongoDB ObjectIds
-  if (!ObjectId.isValid(listingId) || !ObjectId.isValid(sellerId)) {
-    return responseReturn(res, 400, { error: "Invalid listingId or sellerId." });
+  // Validate MongoDB ObjectId
+  if (!ObjectId.isValid(sellerId)) {
+    return responseReturn(res, 400, { error: "Invalid sellerId." });
   }
 
   try {
-    // Fetch aggregated rating data
+    // Fetch aggregated rating data by sellerId
     const getRating = await reviewModel.aggregate([
       {
         $match: {
-          listingId: new ObjectId(listingId),
           sellerId: new ObjectId(sellerId),
-          rating: { $not: { $size: 0 } },
         },
       },
       { $unwind: "$rating" },
@@ -734,21 +1203,19 @@ get_reviews = async (req, res) => {
       });
     }
 
-    // Fetch all reviews for the total count
-    const getAll = await reviewModel.find({ listingId });
+    // Fetch all reviews for the seller
+    const getAll = await reviewModel.find({ sellerId });
 
-    // Fetch paginated reviews
+    // Fetch paginated reviews for the seller
     const reviews = await reviewModel
-      .find({ listingId })
+      .find({ sellerId })
       .skip(skipPage)
       .limit(limit)
       .sort({ createdAt: -1 });
-      
 
-      console.log(reviews)
-      console.log(getAll.length)
-      console.log(rating_review)
-
+    console.log(reviews);
+    console.log(getAll.length);
+    console.log(rating_review);
 
     // Send success response
     responseReturn(res, 200, {
@@ -766,8 +1233,6 @@ get_reviews = async (req, res) => {
     });
   }
 };
-
-
 
 
 

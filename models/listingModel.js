@@ -71,18 +71,17 @@ const listingSchema = new Schema(
     pricePerUnit: {
       type: Number,
       default: 0,
+      min: 0, // Ensures pricePerUnit cannot be negative
     },
     perYield: {
       type: Number,
     },
     sellerDelivery: {
       type: Boolean,
-      default: false,
       required: true,
     },
     traderPickup: {
       type: Boolean,
-      default: false,
       required: true,
     },
     isAvailable: {

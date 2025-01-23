@@ -258,66 +258,64 @@ class categoryController {
   // };
   
   deleteAdditionalFeature = async (req, res) => {
-      const { id } = req.params; // Get the ID of the feature to delete from the request parameters
-      // const { name } = req.body; // Optionally, name can be passed in the body
-      console.log(id)
-      console.log(id)
-    
-      if (!id) {
-        console.log("01")
-        return responseReturn(res, 400, { error: "Additional Feature ID or name must be provided" });
+    const { id } = req.params; // Get the ID of the feature to delete from the request parameters
+    // const { name } = req.body; // Optionally, name can be passed in the body
+    console.log(id)
+    console.log(id)
+  
+    if (!id && !name) {
+      return responseReturn(res, 400, { error: "Additional Feature ID or name must be provided" });
+    }
+  
+    try {
+      // Find the additional feature by ID or name
+      const additionalFeature = await additionalFeatureModel.findOne(id ? { _id: id } : { name });
+      if (!additionalFeature) {
+        return responseReturn(res, 404, { error: "Additional Feature not found" });
       }
-    
+  
+      // Extract image URL and public ID from the additional feature
+      const imageUrl = additionalFeature.image;
+      const publicId = imageUrl.split("/").slice(-2, -1)[0]; // Extract public ID from the URL (2nd to last segment)
+  
+      cloudinary.config({
+        cloud_name: process.env.cloud_name,
+        api_key: process.env.api_key,
+        api_secret: process.env.api_secret,
+        secure: true,
+      });
+  
+      // Remove the image from Cloudinary
       try {
-        // Find the additional feature by ID or name
-        const additionalFeature = await additionalFeatureModel.findOne({ _id: id });
-        console.log(additionalFeature)
-        if (!additionalFeature) {
-          return responseReturn(res, 404, { error: "Additional Feature not found" });
+        const cloudinaryResponse = await cloudinary.uploader.destroy(`additionalFeatures/${publicId}`);
+        
+        if (cloudinaryResponse.result !== 'ok') {
+          console.error(`Failed to delete image with public ID ${publicId} from Cloudinary. Response: ${JSON.stringify(cloudinaryResponse)}`);
+        } else {
+          console.log(`Image with public ID ${publicId} deleted successfully from Cloudinary.`);
         }
-    
-        // Extract image URL and public ID from the additional feature
-        const imageUrl = additionalFeature.image;
-        const publicId = imageUrl
-        .split("/")
-        .pop()
-        .split(".")[0]; // Extract public ID from the Cloudinary URL // Extract public ID from the URL (2nd to last segment)
-    
-        cloudinary.config({
-          cloud_name: process.env.cloud_name,
-          api_key: process.env.api_key,
-          api_secret: process.env.api_secret,
-          secure: true,
-        });
-    
-        // Remove the image from Cloudinary
-        try {
-          const cloudinaryResponse = await cloudinary.uploader.destroy(`additionalFeatures/${publicId}`);
-          
-          if (cloudinaryResponse.result !== 'ok') {
-            console.error(`Failed to delete image with public ID ${publicId} from Cloudinary. Response: ${JSON.stringify(cloudinaryResponse)}`);
-          } else {
-            console.log(`Image with public ID ${publicId} deleted successfully from Cloudinary.`);
-          }
-        } catch (imageError) {
-          console.error("Error deleting image from Cloudinary:", imageError);
-        }
-    
-        // Delete the additional feature from the database
-        await additionalFeatureModel.deleteOne({ _id: additionalFeature._id });
-    
-        // Fetch all remaining additional features
-        const remainingFeatures = await additionalFeatureModel.find();
-    
-        return responseReturn(res, 200, {
-          message: "Additional Feature deleted successfully",
-          additionalFeatures: remainingFeatures,
-        });
-      } catch (error) {
-        console.error("Error deleting additional feature:", error);
-        return responseReturn(res, 500, { error: "Internal server error" });
+      } catch (imageError) {
+        console.error("Error deleting image from Cloudinary:", imageError);
       }
-    };
+  
+      // Delete the additional feature from the database
+      await additionalFeatureModel.deleteOne({ _id: additionalFeature._id });
+  
+      // Fetch all remaining additional features
+      const remainingFeatures = await additionalFeatureModel.find();
+  
+      return responseReturn(res, 200, {
+        message: "Additional Feature deleted successfully",
+        additionalFeatures: remainingFeatures,
+      });
+    } catch (error) {
+      console.error("Error deleting additional feature:", error);
+      return responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+  
+  
+  
   get_category = async (req, res) => {
     const { page, searchValue, parPage } = req.query;
 

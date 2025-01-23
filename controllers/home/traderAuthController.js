@@ -41,6 +41,56 @@ class traderAuthController{
         
        }
     }
+
+    // trader_changePassword = async (req, res) => {
+    //     const { traderId, currentPassword, newPassword, confirmPassword } = req.body;
+    //     console.log(req.body)
+    
+    //     try {
+    //       // Validate required fields
+    //       if (!traderId || !currentPassword || !newPassword || !confirmPassword) {
+    //         return responseReturn(res, 400, { error: "All fields are required." });
+    //       }
+    
+    //       // Check if the new password and confirm password match
+    //       if (newPassword !== confirmPassword) {
+    //         return responseReturn(res, 400, { error: "Passwords do not match." });
+    //       }
+    
+    //       // Find the trader by ID
+    //       const trader = await traderModel.findById(traderId).select('+password');
+    //       if (!trader) {
+    //         return responseReturn(res, 404, { error: "Trader not found." });
+    //       }
+    
+    //       // Verify the current password
+    //       const isMatch = await bcrypt.compare(currentPassword, trader.password);
+    //       if (!isMatch) {
+    //         return responseReturn(res, 401, { error: "Current password is incorrect." });
+    //       }
+    
+    //       // Hash the new password
+    //       const salt = await bcrypt.genSalt(10);
+    //       const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    //       // Update the trader's password
+    //       trader.password = hashedPassword;
+    //       await trader.save();
+    
+    //       // Optionally log out the user by clearing the token cookie
+    //       res.cookie('traderToken', null, {
+    //         expires: new Date(Date.now()),
+    //         httpOnly: true,
+    //       });
+    
+    //       responseReturn(res, 200, { message: "Password changed successfully. Please log in again." });
+    //     } catch (error) {
+    //       console.error("Change Password Error:", error);
+    //       responseReturn(res, 500, { error: "An error occurred. Please try again later." });
+    //     }
+    //   };
+    
+   
     // trader_login = async (req, res) => {
     //     console.log("login");
     //     console.log(req.body);
@@ -129,6 +179,58 @@ class traderAuthController{
     //         responseReturn(res, 500, { redirect: 0,error: "Server error, please try again later." });
     //     }
     // };
+    
+    trader_changePassword = async (req, res) => {
+      const { traderId, currentPassword, newPassword, confirmPassword } = req.body;
+      console.log(req.body);
+    
+      try {
+        // Validate required fields
+        if (!traderId || !currentPassword || !newPassword || !confirmPassword) {
+          return responseReturn(res, 400, { error: "All fields are required." });
+        }
+    
+        // Check if the new password and confirm password match
+        if (newPassword !== confirmPassword) {
+          return responseReturn(res, 400, { error: "Passwords do not match." });
+        }
+    
+        // Find the trader by ID
+        const trader = await traderModel.findById(traderId).select('+password');
+        if (!trader) {
+          return responseReturn(res, 404, { error: "Trader not found." });
+        }
+    
+        // Verify the current password
+        const isMatch = await bcrypt.compare(currentPassword, trader.password);
+        if (!isMatch) {
+          return responseReturn(res, 401, { error: "Current password is incorrect." });
+        }
+    
+        // Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+        // Update the trader's password
+        trader.password = hashedPassword;
+        await trader.save();
+    
+        // Optionally log out the user by clearing the token cookie
+        res.cookie('traderToken', null, {
+          expires: new Date(Date.now()),
+          httpOnly: true,
+        });
+    
+        // Respond with success message
+        responseReturn(res, 200, { message: "Password changed successfully. Please log in again." });
+    
+      } catch (error) {
+        console.error("Change Password Error:", error);
+        responseReturn(res, 500, { error: "An error occurred. Please try again later." });
+      }
+    };
+    
+    
     trader_login = async (req, res) => {
         // console.log("login");
         // console.log(req.body);

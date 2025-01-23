@@ -731,6 +731,10 @@ class dealController {
     admin_order_status_update = async (req, res) => {
         const { orderId } = req.params
         const { status } = req.body
+        console.log("REQ BODY")
+        console.log(req.body)
+        console.log("REQ PARAMS")
+        console.log(req.params)
 
         try {
             await traderDeal.findByIdAndUpdate(orderId, {
@@ -1018,6 +1022,10 @@ class dealController {
         const { orderId } = req.params; // ID of the authorDeal
         const { status } = req.body;   // New shipPickUpStatus (e.g., "confirmed")
         const { transaction } = req.body;   // New shipPickUpStatus (e.g., "confirmed")
+        console.log("REQ BODY")
+        console.log(req.body)
+        console.log("REQ PARAMS")
+        console.log(req.params)
 
         
     

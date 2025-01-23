@@ -110,9 +110,9 @@ class transactionController {
               const { image } = files;
       
               // Validate required fields
-              if (!transactionId || !paymentType || !image) {
+              if (!transactionId || !paymentType || !image || !message) {
                   return res.status(400).json({
-                      error: "Transaction ID, payment type, or image not provided",
+                      error: "Please Do include an image proof and message",
                   });
               }
       
@@ -384,6 +384,15 @@ class transactionController {
             });
         }
 
+          // Fetch the traderDeal by traderDealId
+          const deal = await traderDeal.findById(traderDealId);
+          if (!deal) {
+              console.log("TraderDeal not found");
+              return responseReturn(res, 404, {
+                  message: "TraderDeal not found for the provided traderDealId.",
+              });
+          }
+
         // Find transactions by traderDealId
         const transactions = await Transaction.find({ traderDealId });
 
@@ -406,6 +415,7 @@ class transactionController {
             // message: "Transactions retrieved successfully.",
             transactions,
             DeliveryHandoffProofs,
+            deal
         });
     } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -665,6 +675,41 @@ proof_submit2 = async (req, res) => {
       }
   });
 };
+deleteTraderDeal = async (req, res) => {
+  const {traderDealId} = req.params;
+  console.log(req.params)
+
+  try {
+    // Validate traderDealId as a valid MongoDB ObjectId
+    if (!ObjectId.isValid(traderDealId)) {
+      return responseReturn(res, 400, "Invalid traderDeal ID");
+    }
+
+    // Find the traderDeal by its ID
+    const traderDealData = await traderDeal.findById(traderDealId);
+
+    if (!traderDealData) {
+      return responseReturn(res, 404, "TraderDeal not found");
+    }
+
+    // Extract the dealId from the traderDeal
+    const dealId = traderDealData._id;
+
+    // Delete the traderDeal
+    await traderDeal.findByIdAndDelete(traderDealId);
+
+    // Delete the associated authorDeal with the same dealId
+    const deletedAuthorDeal = await authorModel.deleteOne({ dealId });
+
+    if (deletedAuthorDeal.deletedCount === 0) {
+      console.warn(`No associated AuthorDeal found for dealId: ${dealId}`);
+    }
+
+    responseReturn(res, 200, "TraderDeal and associated AuthorDeal deleted successfully");
+  } catch (error) {
+    console.error("Error deleting traderDeal and associated authorDeal:", error);
+    responseReturn(res, 500, "An error occurred while deleting the records", { error });
+  }}
 
 }
 

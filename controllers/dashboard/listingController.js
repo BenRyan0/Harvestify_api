@@ -576,7 +576,36 @@ class listingController {
       if (!images || !Array.isArray(images)) {
         return responseReturn(res, 400, { error: "A minimum of 2 images is required" });
       }
+    
+      sellerDelivery = sellerDelivery === "true";
+      traderPickup = traderPickup === "true";
+  
+      // Check if both sellerDelivery and traderPickup are false
+      if (!sellerDelivery && !traderPickup) {
+        return responseReturn(res, 400, {
+          error: "At least one of sellerDelivery or traderPickup must be selected.",
+        });
+      }
 
+
+          // Validate description length
+    const limitDescriptionWords = (desc, maxWords) => {
+      const words = desc.trim().split(/\s+/);
+      if (words.length > maxWords) {
+        return { isValid: false, truncated: words.slice(0, maxWords).join(" ") };
+      }
+      return { isValid: true, truncated: desc };
+    };
+
+    const descriptionValidation = limitDescriptionWords(description, 100);
+    if (!descriptionValidation.isValid) {
+      return responseReturn(res, 400, {
+        error: `Description exceeds the 100-word limit. Please shorten it.`,
+      });
+    }
+    description = descriptionValidation.truncated;
+
+    
       name = name.trim();
       const slug = name.split(" ").join("-");
 

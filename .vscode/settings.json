@@ -5,7 +5,7 @@
             "splitTerminals": [
               {
                 "name": "Backend",
-                "commands": ["", "npm run start"]
+                "commands": ["", "npm run server"]
               },
               {
                 "name": "Backend_",
