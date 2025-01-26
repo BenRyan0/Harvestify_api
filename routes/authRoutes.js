@@ -4,6 +4,8 @@ const { authMiddleware } = require("../middlewares/authMiddleware");
 const authControllers = require("../controllers/authControllers");
 
 router.post("/admin-login", authControllers.admin_login);
+router.put("/admin-change-password", authControllers.change_password);
+router.put("/seller-change-password", authControllers.changePassword_Seller);
 router.get("/get-user", authMiddleware, authControllers.getUser);
 
 router.post("/seller-register", authControllers.seller_register);

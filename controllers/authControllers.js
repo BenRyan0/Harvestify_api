@@ -45,11 +45,6 @@ class authControllers {
   };
 
 
-
-
-
-
-
   admin_login = async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -80,6 +75,49 @@ class authControllers {
       responseReturn(res, 500, { error: error.message });
     }
   };
+  
+  change_password = async (req, res) => {
+    console.log("CHANGE")
+    console.log(req.body)
+    const { currentPassword, newPassword, id } = req.body;
+    // const { id } = req.admin; // Assuming you decode the JWT and get the admin's ID
+  
+    try {
+      // Fetch the admin from the database
+      const admin = await adminModel.findById(id).select('+password');
+      if (!admin) {
+        return res.status(404).json({
+          error: "Admin not found",
+        });
+      }
+  
+      // Compare the current password with the stored password
+      const match = await bcrypt.compare(currentPassword, admin.password);
+      if (!match) {
+        return res.status(400).json({
+          error: "Current password is incorrect",
+        });
+      }
+  
+      // Hash the new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+  
+      // Update the password in the database
+      admin.password = hashedNewPassword;
+      await admin.save();
+  
+      // Return success response
+      res.status(200).json({
+        message: "Password changed successfully",
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        error: "An error occurred while changing the password",
+      });
+    }
+  };
+  
 
   seller_login = async (req, res) => {
     const { email, password } = req.body;
@@ -114,137 +152,47 @@ class authControllers {
     }
   };
 
-  // seller_register = async (req, res) => {
-  //   console.log("SELLER REGISTRATION")
-  //   try {
-  //     const { email } = req.body;
-  //     // Check if the email already exists
-  //     const getSeller = await sellerModel.findOne({ email });
-  //     if (getSeller) {
-  //       return responseReturn(res, 404, {
-  //         error: "Email is already used. Please login instead.",
-  //         requestMessage: "Email is already used. Please login instead."
-  //       });
-  //     }
-  
-  //     const form = new formidable.IncomingForm({ multiples: true });
-  //     form.parse(req, async (err, fields, files) => {
-  //       if (err) {
-  //         console.error("Form parsing error:", err);
-  //         return responseReturn(res, 400, { error: "Form parsing error",requestMessage: "Trader Application Request has failed please try again." });
-  //       }
-  
-  //       // Destructure fields and files'
-  //       console.log("ASdasd")
-  //       let {
-  //         firstName,
-  //         middleName,
-  //         lastName,
-  //         birthDate,
-  //         sex,
-  //         email,
-  //         phoneNumber,
-  //         associationName,
-  //         associationloc_street,
-  //         associationloc_barangay,
-  //         associationloc_province,
-  //         associationloc_municipalitycity,
-  //         password,
-  //       } = fields;
-  
-  //       const {
-  //         associationImage,
-  //         profileImage,
-  //         validId_img,
-  //         credential_img01,
-  //         credential_img02,
-  //       } = files;
-  
-  //       // Configure Cloudinary
-  //       cloudinary.config({
-  //         cloud_name: process.env.cloud_name,
-  //         api_key: process.env.api_key,
-  //         api_secret: process.env.api_secret,
-  //         secure: true,
-  //       });
-  
-  //       try {
-  //         // Helper function to resize and upload images
-  //         const resizeAndUploadImage = async (imageFile, folder) => {
-  //           const resizedImage = await this.resizeImage(imageFile.filepath || imageFile.path);
-  //           return cloudinary.uploader.upload(resizedImage, { folder });
-  //         };
-  
-  //         // Upload all images in parallel
-  //         const [
-  //           associationImageURL,
-  //           profileImageURL,
-  //           validIdURL,
-  //           credential1URL,
-  //           credential2URL,
+  changePassword_Seller = async (req, res) => {
+    console.log("CHANGE PASSWORD REQUEST _SELLER");
+    console.log(req.body);
 
-  //         ] = await Promise.all([
-  //           resizeAndUploadImage(associationImage, "sellersCredentials"),
-  //           resizeAndUploadImage(profileImage, "sellersCredentials"),
-  //           resizeAndUploadImage(validId_img, "sellersCredentials"),
-  //           resizeAndUploadImage(credential_img01, "sellersCredentials"),
-  //           resizeAndUploadImage(credential_img02, "sellersCredentials"),
-            
-  //         ]);
-  
-  //         // Create seller
-  //         const hashedPassword = await bcrypt.hash(password, 10);
-  //         const seller = await sellerModel.create({
-  //           name: firstName + lastName,
-  //           firstName,
-  //           middleName,
-  //           lastName,
-  //           birthDate: new Date(birthDate),
-  //           sex,
-  //           phoneNumber,
-  //           email,
-  //           password: hashedPassword, // Hash password before storing
-  //           associationName,
-  //           associationloc_street,
-  //           associationloc_barangay,
-  //           associationloc_province,
-  //           associationloc_municipalitycity,
-  //           associationImage: associationImageURL.url,
-  //           profileImage: profileImageURL.url,
-  //           validId_img: validIdURL.url,
-  //           credential_img01: credential1URL.url,
-  //           credential_img02: credential2URL.url,
-  //           method: "manually",
-  //           clusterInfo:{
-  //             clusterName: associationName
-  //           }
-  //         });
-  
-  //         // Create associated chat model
-  //         await sellerCustomerModel.create({ myId: seller.id });
-  
-  //         // Create token and send it in the cookie
-  //         const token = await createToken({ id: seller.id, role: seller.role });
-  //         res.cookie("accessToken", token, {
-  //           expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiry
-  //         });
-  
-  //         // Return success response
-  //         responseReturn(res, 201, {
-  //           // token,
-  //           message: "Request Recorded.",
-  //           requestMessage: "Trader Application Request Recorded."
-  //         });
-  //       } catch (error) {
-  //         console.error("Image upload or seller creation error:", error);
-  //         return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again." });
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.error("Registration error:", error);
-  //     return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again." });
-  //   }
-  // };
+    const { currentPassword, newPassword, confirmPassword, id } = req.body;
+
+    try {
+        // Fetch the seller from the database by ID and include the password field
+        const seller = await sellerModel.findById(id).select('+password');
+        if (!seller) {
+            return responseReturn(res, 404, {error: "Seller not found"});
+        }
+
+        // Check if the new password matches the confirmation password
+        if (newPassword !== confirmPassword) {
+            return responseReturn(res, 400, {error:  "New password and confirmation password do not match"});
+        }
+
+        // Compare the current password with the stored password
+        const match = await bcrypt.compare(currentPassword, seller.password);
+        if (!match) {
+            return responseReturn(res, 400, {error: "Current password is incorrect"});
+        }
+
+        // Hash the new password
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update the password in the database
+        seller.password = hashedNewPassword;
+        await seller.save();
+
+        // Return success response
+        return responseReturn(res, 200,{message: "Password changed successfully"});
+    } catch (error) {
+        console.error(error);
+        return responseReturn(res, 500,{error :"An error occurred while changing the password"});
+    }
+};
+
+
+
   
   seller_register = async (req, res) => {
     console.log("SELLER REGISTRATION");

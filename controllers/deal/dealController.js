@@ -376,7 +376,10 @@ class dealController {
             });
     
             await order.save(); // This triggers the `pre('save')` middleware in the traderDeal schema
-    
+    //         console.log("NGIIIIIIII")
+    // console.log(traderDealListing[0].sellerId)
+    // console.log(":::--------------->>>")
+    // console.log(traderDealListing)
             // Prepare author deal data
             authorDealData.push({
                 dealId: order.id,

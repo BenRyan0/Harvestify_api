@@ -6,6 +6,8 @@ const formidable = require("formidable");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
+const { mongo: { ObjectId } } = require('mongoose');
+const mongoose = require("mongoose"); // Import mongoose at the top
 
 require("dotenv").config();
 
@@ -188,85 +190,117 @@ class categoryController {
       return responseReturn(res, 500, { error: 'An error occurred while processing the voucher' });
     }
   };
-  
 
-  // validate_and_use_voucher = async (req, res) => {
-  //   console.log("Asdasdasd")
-  //   const { code, sellerId } = req.body;
 
-  //   try {
-  //     // Find the voucher by code and sellerId
-  //     const voucher = await voucherModel.findOne({ code: code, sellerId: sellerId });
+  deactivate_voucher = async (req, res) => {
+    const { code, sellerId } = req.body;
+    console.log(req.body)
+   
 
-  //     if (!voucher) {
-  //       return responseReturn(res, 404, { error: 'Voucher not found' });
-  //     }
-
-  //     // Check if the voucher is expired
-  //     const currentDate = new Date();
-  //     if (currentDate < voucher.startDate || currentDate > voucher.expirationDate) {
-  //       return responseReturn(res, 400, { error: 'Voucher is expired or not yet valid' });
-  //     }
-
-  //     // Check if the voucher is already redeemed
-  //     if (voucher.isRedeemed) {
-  //       return responseReturn(res, 400, { error: 'Voucher has already been redeemed' });
-  //     }
-
-  //     // Mark the voucher as redeemed
-  //     voucher.isRedeemed = true;
-  //     await voucher.save();
-
-  //     return responseReturn(res, 200, {
-  //       message: 'Voucher successfully redeemed',
-  //       discountType: voucher.discountType,
-  //       value: voucher.value
-  //     });
-  //   } catch (error) {
-  //     console.error('Error validating and using voucher:', error);
-  //     return responseReturn(res, 500, { error: 'An error occurred while processing the voucher' });
-  //   }
-  // };
-
-  get_voucher = async (req, res) => {
-    const { page, searchValue, parPage } = req.query;
+    if (!code || !sellerId) {
+      console.log("01")
+      return responseReturn(res, 400, { error: "Code and Seller ID are required" });
+    }
 
     try {
-      let skipPage = "";
+      console.log("02")
+      const voucher = await voucherModel.findOne({ code, sellerId });
+
+      if (!voucher) {
+        console.log("03")
+        return responseReturn(res, 404, { error: "Voucher not found" });
+      }
+
+      console.log("04")
+      voucher.isRedeemed = true; // Mark it as expired immediately
+      voucher.expirationDate = new Date(); // Mark it as expired immediately
+      await voucher.save();
+
+      console.log("05")
+      return responseReturn(res, 200, { message: "Voucher deactivated successfully", voucher });
+    } catch (error) {
+      console.log("06")
+      console.error("Error deactivating voucher:", error);
+      return responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  delete_voucher = async (req, res) => {
+    const { code, sellerId } = req.body;
+    console.log(req.body);
+  
+    if (!code || !sellerId) {
+      console.log("01");
+      return responseReturn(res, 400, { error: "Code and Seller ID are required" });
+    }
+  
+    try {
+      console.log("02");
+      // Find the voucher by code and sellerId
+      const voucher = await voucherModel.findOne({ code, sellerId });
+  
+      if (!voucher) {
+        console.log("03");
+        return responseReturn(res, 404, { error: "Voucher not found" });
+      }
+  
+      // Delete the voucher from the database
+      await voucherModel.deleteOne({ _id: voucher._id });
+  
+      console.log("04");
+      return responseReturn(res, 200, { message: "Voucher deleted successfully" });
+    } catch (error) {
+      console.log("06");
+      console.error("Error deleting voucher:", error);
+      return responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+  
+
+  get_voucher = async (req, res) => {
+    const { page, searchValue, parPage, sellerId } = req.query;
+  
+    try {
+      // Validate and add sellerId to the filter
+      const filter = {};
+  
+      // If sellerId is provided, convert it to ObjectId using new
+      if (sellerId) {
+        if (!mongoose.Types.ObjectId.isValid(sellerId)) {
+          return responseReturn(res, 400, { error: "Invalid sellerId" });
+        }
+        filter.sellerId = new mongoose.Types.ObjectId(sellerId); // Use 'new' here
+      }
+  
+      // Add text search filter if necessary
+      if (searchValue) {
+        filter.$text = { $search: searchValue };
+      }
+  
+      // Pagination logic
+      let skipPage = 0;
       if (parPage && page) {
         skipPage = parseInt(parPage) * (parseInt(page) - 1);
       }
-      if (searchValue && page && parPage) {
-        const vouchers = await voucherModel
-          .find({
-            $text: { $search: searchValue },
-          })
-          .skip(skipPage)
-          .limit(parPage)
-          .sort({ createdAt: -1 });
-        const totalVouchers = await voucherModel
-          .find({
-            $text: { $search: searchValue },
-          })
-          .countDocuments();
-        responseReturn(res, 200, { totalVouchers, vouchers });
-      } else if (searchValue === "" && page && parPage) {
-        const vouchers = await voucherModel
-          .find({})
-          .skip(skipPage)
-          .limit(parPage)
-          .sort({ createdAt: -1 });
-        const totalVouchers = await voucherModel.find({}).countDocuments();
-        responseReturn(res, 200, { totalVouchers, vouchers });
-      } else {
-        const vouchers = await voucherModel.find({}).sort({ createdAt: -1 });
-        const totalVouchers = await voucherModel.find({}).countDocuments();
-        responseReturn(res, 200, { totalVouchers, vouchers });
-      }
+  
+      // Fetch the vouchers
+      const vouchers = await voucherModel
+        .find(filter)
+        .skip(skipPage)
+        .limit(parPage ? parseInt(parPage) : 0)
+        .sort({ createdAt: -1 });
+  
+      // Count the total vouchers matching the filter
+      const totalVouchers = await voucherModel.countDocuments(filter);
+  
+      // Send the response with vouchers
+      responseReturn(res, 200, { totalVouchers, vouchers });
     } catch (error) {
-      console.log(error.message);
+      console.error(error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
     }
   };
+  
 }
 
 module.exports = new categoryController();

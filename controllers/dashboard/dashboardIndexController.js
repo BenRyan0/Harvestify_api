@@ -640,7 +640,7 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
       {
         $match: {
           sellerId: new ObjectId(id),
-          shipPickUpStatus: 'confirmed',
+          shipPickUpStatus: 'completed',
         },
       },
       {
@@ -657,177 +657,231 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
     const monthlyData = await authorOrder.aggregate([
       {
         $match: {
-          sellerId: new ObjectId(id),
+          sellerId: new ObjectId(id), // Match orders for the specific seller
         },
       },
       {
         $group: {
           _id: { month: { $month: "$createdAt" } },
-          offers: { $sum: 1 }, // Count of offers
-          successfulDeals: { $sum: 1 }, // Count of successful deals
-          revenue: { $sum: '$price' }, // Sum of revenue
+          offers: { $sum: 1 }, // Count all offers (all deals)
+          successfulDeals: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$shipPickUpStatus", "completed"] }, { $eq: ["$paymentStatus", "completed"] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          revenue: { $sum: "$price" }, // Sum revenue
         },
       },
       {
         $sort: { "_id.month": 1 }, // Sort by month
       },
     ]);
-
+    
+    // Fill in missing months with zeros
+    const completeMonthlyData = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const data = monthlyData.find((d) => d._id.month === month) || { offers: 0, successfulDeals: 0, revenue: 0 };
+      return { ...data, month };
+    });
+    
+    // Chart Data Preparation
     const chartData = {
       series: [
         {
           name: "Offers",
-          data: monthlyData.map((data) => data.offers),
+          data: completeMonthlyData.map((data) => data.offers),
         },
         {
           name: "Successful Deals",
-          data: monthlyData.map((data) => data.successfulDeals),
+          data: completeMonthlyData.map((data) => data.successfulDeals),
         },
         {
           name: "Revenue",
-          data: monthlyData.map((data) => data.revenue),
+          data: completeMonthlyData.map((data) => data.revenue),
         },
       ],
-      options: {
-        xaxis: {
-          categories: [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-          ],
+    };
+    
+    const successfulDealsWithListings = await authorOrder.aggregate([
+      {
+        $match: {
+          sellerId: new ObjectId(id),
+          shipPickUpStatus: 'completed',
+          paymentStatus: 'completed',
         },
       },
-    };
+      {
+        $unwind: "$listing_", // Unwind the listings inside the authorDeal
+      },
+      {
+        $lookup: {
+          from: "listings", // Lookup the Listing collection
+          localField: "listing_",
+          foreignField: "_id",
+          as: "listingDetails",
+        },
+      },
+      {
+        $unwind: "$listingDetails", // Unwind the array of listing details
+      },
+      {
+        $match: {
+          "listingDetails.category": { $exists: true, $ne: null }, // Ensure the category exists in the listing
+        },
+      },
+      {
+        $group: {
+          _id: { month: { $month: "$createdAt" }, category: "$listingDetails.category" }, // Group by month and category
+          count: { $sum: 1 }, // Count the total number of listings in each category
+        },
+      },
+      {
+        $sort: { "_id.month": 1, count: -1 }, // Sort by month and count in descending order
+      },
+    ]);
+    
+    // Prepare the second chart data
+    const secondChartData = successfulDealsWithListings.map((data) => ({
+      name: data._id.category,
+      data: Array.from({ length: 12 }, (_, i) => {
+        const month = i + 1;
+        const categoryData = successfulDealsWithListings.find((d) => d._id.category === data._id.category && d._id.month === month);
+        return categoryData ? categoryData.count : 0;
+      }),
+    }));
+    
+    console.log("Second Chart Data (Listings with Categories):", secondChartData);
+    
 
-    console.log("____________________________ >");
-    console.log(messages);
+    // Response return with added secondChartData
     responseReturn(res, 200, {
       totalOrder,
       totalPendingOrder,
       messages: formattedMessages,
       recentOrders,
       totalProduct,
-      totalSales: totalSalesValue, // Use totalSalesValue for totalSales
-      chartData, // Add chart data to response
-    });
+      totalSales: totalSalesValue,
+      chartData,
+      secondChartData
+    })
   } catch (error) {
     console.log('get seller dashboard data error ' + error.message);
   }
 };
-module.exports.get_admin_dashboard_data = async (req, res) => {
-  try {
-    // Seller-specific data
-    const totalProduct = await productModel.countDocuments();
-    const totalOrder = await authorOrder.countDocuments();
-    const totalPendingOrder = await authorOrder
-      .find({
-        delivery_status: 'pending',
-      })
-      .countDocuments();
 
-    const messages = await sellerCustomerMessage.aggregate([
-      {
-        $sort: { createdAt: -1 }, // Sort messages by most recent first
-      },
-      {
-        $group: {
-          _id: "$senderId", // Group by senderId
-          latestMessage: { $first: "$$ROOT" }, // Get the most recent message per sender
-        },
-      },
-      {
-        $limit: 3, // Limit to 3 latest senders
-      },
-    ]);
 
-    // Extract the actual message documents
-    let formattedMessages = messages.map((group) => group.latestMessage);
 
-    // Reverse the order to get the oldest message first
-    formattedMessages = formattedMessages;
+// module.exports.get_admin_dashboard_data = async (req, res) => {
+//   try {
+//     // Seller-specific data
+//     const totalProduct = await productModel.countDocuments();
+//     const totalOrder = await authorOrder.countDocuments();
+//     const totalPendingOrder = await authorOrder
+//       .find({
+//         delivery_status: 'pending',
+//       })
+//       .countDocuments();
 
-    const recentOrders = await authorOrder.find();
+//     const messages = await sellerCustomerMessage.aggregate([
+//       {
+//         $sort: { createdAt: -1 }, // Sort messages by most recent first
+//       },
+//       {
+//         $group: {
+//           _id: "$senderId", // Group by senderId
+//           latestMessage: { $first: "$$ROOT" }, // Get the most recent message per sender
+//         },
+//       },
+//       {
+//         $limit: 3, // Limit to 3 latest senders
+//       },
+//     ]);
 
-    // Calculate the sum of all authordeals price with shipPickUpStatus "confirmed"
-    const totalSales = await authorOrder.aggregate([
-      {
-        $match: {
-          shipPickUpStatus: 'confirmed',
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: '$price' },
-        },
-      },
-    ]);
+//     // Extract the actual message documents
+//     let formattedMessages = messages.map((group) => group.latestMessage);
 
-    const totalSalesValue = totalSales.length > 0 ? totalSales[0].totalSales : 0;
+//     // Reverse the order to get the oldest message first
+//     formattedMessages = formattedMessages;
 
-    // Add monthly data for the chart
-    const monthlyData = await authorOrder.aggregate([
-      {
-        $group: {
-          _id: { month: { $month: "$createdAt" } },
-          offers: { $sum: 1 }, // Count of offers
-          successfulDeals: { $sum: 1 }, // Count of successful deals
-          revenue: { $sum: '$price' }, // Sum of revenue
-        },
-      },
-      {
-        $sort: { "_id.month": 1 }, // Sort by month
-      },
-    ]);
+//     const recentOrders = await authorOrder.find();
 
-    const chartData = {
-      series: [
-        {
-          name: "Offers",
-          data: monthlyData.map((data) => data.offers),
-        },
-        {
-          name: "Successful Deals",
-          data: monthlyData.map((data) => data.successfulDeals),
-        },
-        {
-          name: "Revenue",
-          data: monthlyData.map((data) => data.revenue),
-        },
-      ],
-      options: {
-        xaxis: {
-          categories: [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-          ],
-        },
-      },
-    };
+//     // Calculate the sum of all authordeals price with shipPickUpStatus "confirmed"
+//     const totalSales = await authorOrder.aggregate([
+//       {
+//         $match: {
+//           shipPickUpStatus: 'confirmed',
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalSales: { $sum: '$price' },
+//         },
+//       },
+//     ]);
 
-    // Admin-specific data
-    const totalSeller = await sellerModel.find({}).countDocuments();
-    const adminMessages = await adminSellerMessage.find({}).limit(3);
-    const adminRecentOrders = await customerOrder.find({}).limit(5);
+//     const totalSalesValue = totalSales.length > 0 ? totalSales[0].totalSales : 0;
 
-    console.log("____________________________ >");
-    console.log(messages);
-    responseReturn(res, 200, {
-      totalOrder,
-      totalPendingOrder,
-      messages: formattedMessages,
-      recentOrders,
-      totalProduct,
-      totalSales: totalSalesValue, // Use totalSalesValue for totalSales
-      chartData, // Add chart data to response
-      totalSeller,
-      adminMessages,
-      adminRecentOrders,
-    });
-  } catch (error) {
-    console.log('get dashboard data error ' + error.message);
-  }
+//     // Add monthly data for the chart
+//     const monthlyData = await authorOrder.aggregate([
+//       {
+//         $group: {
+//           _id: { month: { $month: "$createdAt" } },
+//           offers: { $sum: 1 }, // Count of offers
+//           successfulDeals: { $sum: 1 }, // Count of successful deals
+//           revenue: { $sum: '$price' }, // Sum of revenue
+//         },
+//       },
+//       {
+//         $sort: { "_id.month": 1 }, // Sort by month
+//       },
+//     ]);
 
-}
+//     const chartData = {
+//       series: [
+//         {
+//           name: "Offers",
+//           data: Array.isArray(monthlyData) ? monthlyData.map((data) => data.offers) : [],
+//         },
+//         {
+//           name: "Successful Deals",
+//           data: Array.isArray(monthlyData) ? monthlyData.map((data) => data.successfulDeals) : [],
+//         },
+//         {
+//           name: "Revenue",
+//           data: Array.isArray(monthlyData) ? monthlyData.map((data) => data.revenue) : [],
+//         },
+//       ],
+//     }
+
+//     // Admin-specific data
+//     const totalSeller = await sellerModel.find({}).countDocuments();
+//     const adminMessages = await adminSellerMessage.find({}).limit(3);
+//     const adminRecentOrders = await customerOrder.find({}).limit(5);
+
+//     console.log("____________________________ >");
+//     console.log(messages);
+//     responseReturn(res, 200, {
+//       totalOrder,
+//       totalPendingOrder,
+//       messages: formattedMessages,
+//       recentOrders,
+//       totalProduct,
+//       totalSales: totalSalesValue, // Use totalSalesValue for totalSales
+//       chartData, // Add chart data to response
+//       totalSeller,
+//       adminMessages,
+//       adminRecentOrders,
+//     });
+//   } catch (error) {
+//     console.log('get dashboard data error ' + error.message);
+//   }
+
+// }
 // module.exports.get_admin_dashboard_data = async (req, res) => {
 //     const { id } = req
 //     try {
@@ -878,3 +932,387 @@ module.exports.get_admin_dashboard_data = async (req, res) => {
 //     }
 
 // }
+
+
+// module.exports.get_admin_dashboard_data = async (req, res) => {
+//   console.log(req.body);
+  
+//   const { sellerId } = req.body; // Get sellerId from the request body
+
+//   if (!sellerId) {
+//     return res.status(400).json({ error: 'Seller ID is required' }); // Ensure sellerId is provided
+//   }
+
+//   try {
+//     const totalProduct = await productModel
+//       .find({
+//         sellerId: new ObjectId(sellerId),
+//       })
+//       .countDocuments();
+
+//     const totalOrder = await authorOrder
+//       .find({
+//         sellerId: new ObjectId(sellerId),
+//       })
+//       .countDocuments();
+
+//     const totalPendingOrder = await authorOrder
+//       .find({
+//         $and: [
+//           {
+//             sellerId: {
+//               $eq: new ObjectId(sellerId),
+//             },
+//           },
+//           {
+//             delivery_status: {
+//               $eq: 'pending',
+//             },
+//           },
+//         ],
+//       })
+//       .countDocuments();
+
+//     const messages = await sellerCustomerMessage.aggregate([
+//       {
+//         $match: {
+//           $or: [
+//             { senderId: sellerId },
+//             { receiverId: sellerId },
+//           ],
+//         },
+//       },
+//       {
+//         $sort: { createdAt: -1 },
+//       },
+//       {
+//         $group: {
+//           _id: "$senderId",
+//           latestMessage: { $first: "$$ROOT" },
+//         },
+//       },
+//       {
+//         $limit: 3,
+//       },
+//     ]);
+
+//     let formattedMessages = messages.map((group) => group.latestMessage);
+
+//     formattedMessages = formattedMessages;
+
+//     const recentOrders = await authorOrder
+//       .find({
+//         sellerId: new ObjectId(sellerId),
+//       });
+
+//     const totalSales = await authorOrder.aggregate([
+//       {
+//         $match: {
+//           sellerId: new ObjectId(sellerId),
+//           shipPickUpStatus: 'completed',
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalSales: { $sum: '$price' },
+//         },
+//       },
+//     ]);
+
+//     const totalSalesValue = totalSales.length > 0 ? totalSales[0].totalSales : 0;
+
+//     const monthlyData = await authorOrder.aggregate([
+//       {
+//         $match: {
+//           sellerId: new ObjectId(sellerId),
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: { month: { $month: "$createdAt" } },
+//           offers: { $sum: 1 },
+//           successfulDeals: {
+//             $sum: {
+//               $cond: [
+//                 { $and: [{ $eq: ["$shipPickUpStatus", "completed"] }, { $eq: ["$paymentStatus", "completed"] }] },
+//                 1,
+//                 0,
+//               ],
+//             },
+//           },
+//           revenue: { $sum: "$price" },
+//         },
+//       },
+//       {
+//         $sort: { "_id.month": 1 },
+//       },
+//     ]);
+    
+//     const completeMonthlyData = Array.from({ length: 12 }, (_, i) => {
+//       const month = i + 1;
+//       const data = monthlyData.find((d) => d._id.month === month) || { offers: 0, successfulDeals: 0, revenue: 0 };
+//       return { ...data, month };
+//     });
+    
+//     const chartData = {
+//       series: [
+//         {
+//           name: "Offers",
+//           data: completeMonthlyData.map((data) => data.offers),
+//         },
+//         {
+//           name: "Successful Deals",
+//           data: completeMonthlyData.map((data) => data.successfulDeals),
+//         },
+//         {
+//           name: "Revenue",
+//           data: completeMonthlyData.map((data) => data.revenue),
+//         },
+//       ],
+//     };
+    
+//     const successfulDealsWithListings = await authorOrder.aggregate([
+//       {
+//         $match: {
+//           sellerId: new ObjectId(sellerId),
+//           shipPickUpStatus: 'completed',
+//           paymentStatus: 'completed',
+//         },
+//       },
+//       {
+//         $unwind: "$listing_",
+//       },
+//       {
+//         $lookup: {
+//           from: "listings",
+//           localField: "listing_",
+//           foreignField: "_id",
+//           as: "listingDetails",
+//         },
+//       },
+//       {
+//         $unwind: "$listingDetails",
+//       },
+//       {
+//         $match: {
+//           "listingDetails.category": { $exists: true, $ne: null },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: { month: { $month: "$createdAt" }, category: "$listingDetails.category" },
+//           count: { $sum: 1 },
+//         },
+//       },
+//       {
+//         $sort: { "_id.month": 1, count: -1 },
+//       },
+//     ]);
+    
+//     const secondChartData = successfulDealsWithListings.map((data) => ({
+//       name: data._id.category,
+//       data: Array.from({ length: 12 }, (_, i) => {
+//         const month = i + 1;
+//         const categoryData = successfulDealsWithListings.find((d) => d._id.category === data._id.category && d._id.month === month);
+//         return categoryData ? categoryData.count : 0;
+//       }),
+//     }));
+
+//     console.log("Second Chart Data (Listings with Categories):", secondChartData);
+
+//     responseReturn(res, 200, {
+//       totalOrder,
+//       totalPendingOrder,
+//       messages: formattedMessages,
+//       recentOrders,
+//       totalProduct,
+//       totalSales: totalSalesValue,
+//       chartData,
+//       secondChartData
+//     });
+//   } catch (error) {
+//     console.log('get seller dashboard data error ' + error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+module.exports.get_admin_dashboard_data = async (req, res) => {
+  console.log(req.body);
+  
+
+  try {
+    // Get total products for all sellers
+    const totalProduct = await productModel
+      .find({})
+      .countDocuments();
+
+    // Get total orders for all sellers
+    const totalOrder = await authorOrder
+      .find({})
+      .countDocuments();
+
+    // Get total pending orders for all sellers
+    const totalPendingOrder = await authorOrder
+      .find({
+        delivery_status: 'pending',
+      })
+      .countDocuments();
+
+      const totalSeller = await sellerModel.find({status: "active"}).countDocuments()
+
+
+    // Get messages for all sellers
+    const messages = await adminSellerMessage.aggregate([
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: "$senderId",
+          latestMessage: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $limit: 3,
+      },
+    ]);
+
+    // Format the messages
+    let formattedMessages = messages.map((group) => group.latestMessage);
+
+    // Get recent orders for all sellers
+    const recentOrders = await authorOrder
+      .find({});
+
+    // Get total sales for all sellers
+    const totalSales = await authorOrder.aggregate([
+      {
+        $match: {
+          shipPickUpStatus: 'completed',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: '$price' },
+        },
+      },
+    ]);
+
+    const totalSalesValue = totalSales.length > 0 ? totalSales[0].totalSales : 0;
+
+    // Get monthly data for the chart (for all sellers)
+    const monthlyData = await authorOrder.aggregate([
+      {
+        $group: {
+          _id: { month: { $month: "$createdAt" } },
+          offers: { $sum: 1 },
+          successfulDeals: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$shipPickUpStatus", "completed"] }, { $eq: ["$paymentStatus", "completed"] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          revenue: { $sum: "$price" },
+        },
+      },
+      {
+        $sort: { "_id.month": 1 },
+      },
+    ]);
+    
+    // Fill in missing months with zeros
+    const completeMonthlyData = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const data = monthlyData.find((d) => d._id.month === month) || { offers: 0, successfulDeals: 0, revenue: 0 };
+      return { ...data, month };
+    });
+
+    const chartData = {
+      series: [
+        {
+          name: "Offers",
+          data: completeMonthlyData.map((data) => data.offers),
+        },
+        {
+          name: "Successful Deals",
+          data: completeMonthlyData.map((data) => data.successfulDeals),
+        },
+        {
+          name: "Revenue",
+          data: completeMonthlyData.map((data) => data.revenue),
+        },
+      ],
+    };
+
+    // Get successful deals with listings
+    const successfulDealsWithListings = await authorOrder.aggregate([
+      {
+        $match: {
+          shipPickUpStatus: 'completed',
+          paymentStatus: 'completed',
+        },
+      },
+      {
+        $unwind: "$listing_",
+      },
+      {
+        $lookup: {
+          from: "listings",
+          localField: "listing_",
+          foreignField: "_id",
+          as: "listingDetails",
+        },
+      },
+      {
+        $unwind: "$listingDetails",
+      },
+      {
+        $match: {
+          "listingDetails.category": { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: { month: { $month: "$createdAt" }, category: "$listingDetails.category" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.month": 1, count: -1 },
+      },
+    ]);
+
+    // Prepare the second chart data
+    const secondChartData = successfulDealsWithListings.map((data) => ({
+      name: data._id.category,
+      data: Array.from({ length: 12 }, (_, i) => {
+        const month = i + 1;
+        const categoryData = successfulDealsWithListings.find((d) => d._id.category === data._id.category && d._id.month === month);
+        return categoryData ? categoryData.count : 0;
+      }),
+    }));
+
+    console.log("Second Chart Data (Listings with Categories):", secondChartData);
+
+    // Send the response with data
+    responseReturn(res, 200, {
+      totalOrder,
+      totalPendingOrder,
+      messages: formattedMessages,
+      recentOrders,
+      totalProduct,
+      totalSeller,
+      totalSales: totalSalesValue,
+      chartData,
+      secondChartData
+    });
+  } catch (error) {
+    console.log('get admin dashboard data error ' + error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
