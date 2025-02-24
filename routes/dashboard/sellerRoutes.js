@@ -19,5 +19,7 @@ router.get('/request-trader-get',authMiddleware,sellerController.get_trader_requ
 router.get('/get-trader/:traderId',authMiddleware,sellerController.get_trader)
 router.post('/trader-status-update',authMiddleware,sellerController.trader_status_update)
 
+router.get('/get-seller-notification/:sellerId',authMiddleware,sellerController.getSellerNotifications)
+
 
 module.exports = router;

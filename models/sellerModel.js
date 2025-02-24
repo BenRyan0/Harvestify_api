@@ -104,6 +104,15 @@ const sellerSchema = new Schema(
       type: Object,
       default: {},
     },
+    sellerType: {
+      type: String,
+      enum: ["cluster", "association", "individual"],
+      required: true,
+    },
+    memberCount:{
+      type: Number,
+      default: 1
+    }
    
   },
   { timestamps: true }

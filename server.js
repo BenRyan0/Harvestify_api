@@ -9,6 +9,8 @@ require("dotenv").config();
 const port = process.env.PORT;
 const socket = require('socket.io');
 const { userInfo } = require("os");
+const cron = require("node-cron");
+const generateHarvestNotifications = require("./utils/generateHarvestNotifications");
 
 const server = http.createServer(app)
 
@@ -162,6 +164,18 @@ socket.on('send_message_seller_to_admin', msg => {
 })
 app.use(bodyParser.json());
 app.use(cookieParser());
+
+// demo only
+app.get("/trigger-notifications", async (req, res) => {
+  try {
+    console.log("Manually triggering harvest notifications...");
+    await generateHarvestNotifications();
+    res.status(200).json({ message: "Harvest notifications triggered successfully!" });
+  } catch (error) {
+    console.error("Error triggering notifications:", error);
+    res.status(500).json({ error: "Failed to trigger notifications" });
+  }
+});
 // Routes
 app.use('/api', require('./routes/chatRoutes'));
 app.use('/api', require('./routes/dashboard/dashboardIndexRoutes'));
@@ -185,6 +199,15 @@ app.use('/api', require('./routes/transaction/transactionRoutes'));
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+
+cron.schedule("0 0 * * *", () => {
+  console.log("Running daily harvest notification check...");
+  generateHarvestNotifications();
+});
+
+
+
+
 
 
 server.listen(port, () => {

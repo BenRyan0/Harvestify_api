@@ -105,6 +105,11 @@ const listingSchema = new Schema(
       type: Array,
       required: false,
     },
+    actualHarvestYield: {
+      type: Number,
+      default: 0, // Default to 0 until updated
+    },
+
   },
   { timestamps: true }
 );

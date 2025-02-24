@@ -1,6 +1,7 @@
 const { responseReturn } = require("../../utils/response")
 const sellerModel = require('../../models/sellerModel') 
 const traderModel = require("../../models/traderModel")
+const notificationModel = require("../../models/Notification/notificationModel")
 
 class sellerController {
     
@@ -235,6 +236,27 @@ class sellerController {
             console.log('active seller get ' + error.message)
         }
     }
+
+
+
+
+    getSellerNotifications = async (req, res) => {
+        const { sellerId } = req.params// Assume seller ID is retrieved from authentication
+      console.log("notifs")
+        try {
+          // Fetch all notifications for the seller
+          const notifications = await notificationModel.find({ sellerId }).sort({ createdAt: -1 });
+      
+          // Count total notifications
+          const totalNotifications = await notificationModel.countDocuments({ sellerId });
+      
+          responseReturn(res, 200, { totalNotifications, notifications });
+        } catch (error) {
+          console.error("Error fetching notifications:", error);
+          responseReturn(res, 500, { error: error.message });
+        }
+      };
+      
 }
 
 module.exports = new sellerController()

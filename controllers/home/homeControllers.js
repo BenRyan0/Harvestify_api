@@ -110,7 +110,7 @@ class homeControllers {
         .limit(9)
         .populate({
           path: 'sellerId', // Adjust based on your actual field name
-          select: 'profileImage phoneNumber rating associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street associationName' // Only get the image and rating fields from the seller
+          select: 'profileImage phoneNumber rating associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street associationName memberCount sellerType' // Only get the image and rating fields from the seller
         })
         // .limit(16)
         .sort({ createdAt: -1 });
@@ -121,7 +121,7 @@ class homeControllers {
         .limit(9)
         .populate({
           path: 'sellerId', // Adjust based on your actual field name
-          select: 'profileImage phoneNumber rating associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street associationName' // Only get the image and rating fields from the seller
+          select: 'profileImage phoneNumber rating associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street associationName memberCount sellerType' // Only get the image and rating fields from the seller
         })
         .sort({ createdAt: -1 });
 
@@ -277,7 +277,7 @@ class homeControllers {
         const listings = await listingModel
             .find({})
             .sort({ createdAt: -1 })
-            .populate("sellerId", "profileImage phoneNumber rating firstName middleName lastName");
+            .populate("sellerId", "profileImage phoneNumber rating firstName middleName lastName memberCount sellerType");
 
         // Instantiate the queryListings with initial listings and query params
         const queryInstance = new queryListings(listings, req.query);
@@ -301,7 +301,7 @@ class homeControllers {
         // Populate the seller information in the result
         const result = await listingModel.populate(resultListings, {
             path: "sellerId",
-            select: "profileImage phoneNumber rating firstName middleName lastName associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street"
+            select: "profileImage phoneNumber rating firstName middleName lastName associationloc_barangay associationloc_municipalitycity associationloc_province associationloc_street memberCount sellerType"
         });
 
         console.log(totalListing)

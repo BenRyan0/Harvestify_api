@@ -296,6 +296,40 @@ class listingController {
     }
   };
 
+  get_ongoing_harvest_listings= async (req, res) => {
+  const { page, searchValue, parPage } = req.query;
+  const { id } = req;
+  const currentDate = new Date(); // Get the current date
+  const perPage = Number(parPage) || 10; // Default to 10 if undefined
+  const currentPage = Number(page) || 1;
+  const skipPage = perPage * (currentPage - 1);
+
+  try {
+    // Base query: Only listings with past harvestStartDate
+    let query = { harvestStartDate: { $lt: currentDate }, sellerId: id };
+
+    // If searchValue exists, apply text search or regex-based search
+    if (searchValue) {
+      query.$or = [
+        { name: { $regex: searchValue, $options: "i" } },
+        { category: { $regex: searchValue, $options: "i" } },
+        { description: { $regex: searchValue, $options: "i" } },
+      ];
+    }
+
+    // Fetch paginated listings & total count simultaneously
+    const [listings, totalListing] = await Promise.all([
+      listingModel.find(query).skip(skipPage).limit(perPage).sort({ createdAt: -1 }),
+      listingModel.countDocuments(query),
+    ]);
+
+    responseReturn(res, 200, { totalListing, listings });
+  } catch (error) {
+    console.error("Error fetching listings:", error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
   listing_get = async (req, res) => {
     const { listingId } = req.params;
     try {
@@ -852,6 +886,38 @@ class listingController {
       });
     }
   };
+
+  updateActualHarvestYield = async (req, res) => {
+    const { listingId, actualYield } = req.body; // Get listing ID and actual yield from request
+  
+    try {
+      // Validate input
+      if (!listingId || actualYield == null) {
+        return responseReturn(res, 400, { error: "Listing ID and actual yield are required." });
+      }
+  
+      if (actualYield < 0) {
+        return responseReturn(res, 400, { error: "Actual harvest yield cannot be negative." });
+      }
+  
+      // Find and update the listing
+      const updatedListing = await listingModel.findByIdAndUpdate(
+        listingId,
+        { actualHarvestYield: actualYield },
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedListing) {
+        return responseReturn(res, 404, { error: "Listing not found." });
+      }
+  
+      responseReturn(res, 200, { message: "Actual harvest yield updated.", listing: updatedListing });
+    } catch (error) {
+      console.error("Error updating actual harvest yield:", error);
+      responseReturn(res, 500, { error: error.message });
+    }
+  };
+  
   
 }
 
