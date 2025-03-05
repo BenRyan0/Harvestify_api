@@ -275,7 +275,8 @@ class homeControllers {
     req.query.parPage = parPage; 
     try {
         const listings = await listingModel
-            .find({})
+        .find({ isAvailable: true })
+            // .find({})
             .sort({ createdAt: -1 })
             .populate("sellerId", "profileImage phoneNumber rating firstName middleName lastName memberCount sellerType");
 
@@ -887,6 +888,7 @@ class homeControllers {
 
 submit_review = async (req, res) => {
   const { name, rating, review, listingId, sellerId, transactionId } = req.body;
+  console.log("------------------------req.body");
   console.log(req.body);
 
   try {
@@ -902,30 +904,40 @@ submit_review = async (req, res) => {
 
     // Check if the transaction exists and is completed
     const transaction = await Transaction.findById(transactionId);
+    console.log("transaction")
+    console.log(transaction)
     if (!transaction) {
       return responseReturn(res, 404, { error: "Transaction not found." });
     }
 
-    if (transaction.fullPaymentStatus !== "Confirmed") {
-      return responseReturn(res, 400, { error: "Transaction is not completed." });
-    }
+    console.log("01")
+    // if (transaction.fullPaymentStatus !== "Confirmed") {
+    //   return responseReturn(res, 400, { error: "Transaction is not completed." });
+    // }
 
     // Ensure the transaction matches the provided listing and seller
     if (
-      transaction.sellerId.toString() !== sellerId ||
+      transaction.seller.toString() !== sellerId ||
       transaction.listingId.toString() !== listingId
     ) {
-      return responseReturn(res, 400, { error: "Transaction details do not match the provided seller or listing." });
+      return responseReturn(res, 400, { error: " Transaction details do not match the provided seller or listing." });
     }
 
+    console.log("02")
     // Check if a review already exists for this transaction
     const existingReview = await reviewModel.findOne({ transactionId });
     if (existingReview) {
       return responseReturn(res, 400, { error: "You have already submitted a review for this transaction." });
     }
 
+    console.log(transactionId)
+    console.log(listingId)
+    console.log(name)
+    console.log(rating)
+    console.log(review)
+    console.log("0.3")
     // Create a new review
-    await reviewModel.create({
+    const reviewId = await reviewModel.create({
       transactionId,
       listingId,
       sellerId,
@@ -934,13 +946,30 @@ submit_review = async (req, res) => {
       review,
       date: moment(Date.now()).format('LL'), // Corrected moment usage
     });
+    console.log("1.1")
+    console.log(reviewId)
+
+    console.log("1.0")
 
     // Update the transaction's buyerStep and sellerStep
-    await Transaction.findByIdAndUpdate(transactionId, {
-      buyerStep: 8,
-      sellerStep: 7,
-    });
+    await Transaction.findByIdAndUpdate(
+      transactionId,
+      {
+          buyerStep: 7,
+          sellerStep: 7,
+          reviewId : reviewId,
+          review: {
+              name: name,   // ✅ Corrected inside the "review" object
+              rating: rating,
+              review: review // Use a different variable name to avoid conflicts
+          }
+      },
+      { new: true } // Returns the updated document
+  );
+  
 
+  console.log("Transaction--------------------------------")
+  console.log(Transaction)
     // Calculate total rating for the seller
     let rate = 0;
     const reviews = await reviewModel.find({ sellerId });
@@ -977,7 +1006,7 @@ submit_review = async (req, res) => {
     // Send success response
     return responseReturn(res, 201, { message: "Review Submitted" });
   } catch (error) {
-    console.error("Error submitting review:", error.message);
+    console.error("Error submitting review:", error);
     // Send error response
     return responseReturn(res, 500, { error: "An error occurred while submitting the review" });
   }

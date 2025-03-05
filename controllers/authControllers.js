@@ -11,6 +11,10 @@ const { createToken } = require("../utils/tokenCreate");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const sellerCustomerModel = require("../models/chat/sellerCustomerModel");
+const speakeasy = require("speakeasy")
+const qrCode = require("qrcode")
+
+const twofactor = require("node-2fa")
 
 
 
@@ -119,38 +123,77 @@ class authControllers {
   };
   
 
+
+  
   seller_login = async (req, res) => {
-    const { email, password } = req.body;
     try {
-      const seller = await sellerModel.findOne({ email }).select("+password");
-
-      console.log(seller);
-      if (seller) {
-        const match = await bcrypt.compare(password, seller.password);
-        if (match) {
-          const token = await createToken({
-            id: seller._id,
-            role: seller.role,
-          });
-
-          res.cookie("accessToken", token, {
-            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          });
-          responseReturn(res, 200, { token, message: "Login Success" });
-        } else {
-          responseReturn(res, 404, {
-            error: "Invalid Credentials, Please try Again",
-          });
-        }
-      } else {
-        responseReturn(res, 404, {
-          error: "Invalid Credentials, Please try Again",
-        });
+      if (!req.user) {
+        return responseReturn(res, 401, { error: "Unauthorized: Invalid Credentials" });
       }
+  
+      console.log("✅ User authenticated:", req.user.email);
+  
+      // Fetch seller details from database
+      const seller = await sellerModel.findOne({ email: req.user.email }).select("+password");
+  
+      if (!seller) {
+        return responseReturn(res, 404, { error: "Invalid Credentials, Please try Again" });
+      }
+  
+
+      if(seller.isMfaActive === true){
+
+        const  authToken = await createToken({
+          id: seller._id,
+          role: seller.role,
+        });
+    
+        // Set cookie (optional)
+        res.cookie("authAccessToken",  authToken, {
+          httpOnly: true, // Prevents JavaScript access
+          secure: process.env.NODE_ENV === "production", // Secure flag in production
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiration
+        });
+    
+        // Return success response
+        responseReturn(res, 200, {
+          authToken,
+          message: "Please Verify the login First",
+          username: seller.name,
+          isMfaActive: seller.isMfaActive,
+        });
+      }else{
+          // Generate JWT token
+        const token = await createToken({
+          id: seller._id,
+          role: seller.role,
+        });
+    
+        // Set cookie (optional)
+        res.cookie("accessToken", token, {
+          httpOnly: true, // Prevents JavaScript access
+          secure: process.env.NODE_ENV === "production", // Secure flag in production
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiration
+        });
+    
+        // Return success response
+        responseReturn(res, 200, {
+          token,
+          message: "Login Success",
+          username: seller.name,
+          isMfaActive: seller.isMfaActive,
+        });
+
+      }
+     
     } catch (error) {
-      responseReturn(res, 500, { error: error.message });
+      console.error("🚨 Error in seller_login:", error);
+      responseReturn(res, 500, { error: "Internal Server Error" });
     }
   };
+  
+
+  
 
   changePassword_Seller = async (req, res) => {
     console.log("CHANGE PASSWORD REQUEST _SELLER");
@@ -219,7 +262,13 @@ class authControllers {
           associationloc_province,
           associationloc_municipalitycity,
           password,
+          sellerType,
+          memberCount
+
         } = fields;
+
+
+        let name = firstName + lastName;
   
         const {
           associationImage,
@@ -294,6 +343,9 @@ class authControllers {
             clusterInfo: {
               clusterName: associationName,
             },
+            sellerType,
+            memberCount,
+            isMfaActive: false
           });
   
           // Create associated chat model
@@ -304,6 +356,14 @@ class authControllers {
           res.cookie("accessToken", token, {
             expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiry
           });
+
+
+
+
+          // 2Factor
+          const newSecret = twofactor.generateSecret({name: "TwoFactorAuthenticator", 
+            account: name})
+
   
           // Return success response
           responseReturn(res, 201, {
@@ -634,6 +694,149 @@ trader_register = async (req, res) => {
     console.error("Outer registration error:", error);
     return responseReturn(res, 500, { error: "Internal server error.",requestMessage: "Trader Application Request has failed please try again."  });
   }
+};
+authStatus = async (req, res) => {
+  if(req.user){
+        // Return success response
+        responseReturn(res, 200, {
+          message: "User Logged in Successfully",
+          username: req.user.name,
+          isMfaActive: req.user.isMfaActive
+        });
+  }else{
+    return responseReturn(res, 401, { error: "Unauthorized User."});
+
+  }
+
+};
+setup2FA = async (req, res) => {
+  try {
+    console.log("🔒 Setting up 2FA for:", req.id);
+
+    // Find seller using the authenticated user ID
+    const seller = await sellerModel.findById(req.id);
+    if (!seller) {
+      return responseReturn(res, 404, { error: "Seller not found" });
+    }
+
+    // Check if twoFactorSecret is already set
+    if (seller.twoFactorSecret) {
+      return responseReturn(res, 400, { error: "2FA is already set up and cannot be changed." });
+    }
+
+    // Generate a new 2FA secret
+    const secret = speakeasy.generateSecret({ length: 20 });
+
+    console.log("📌 Generated Secret:", secret.base32);
+
+    // Update seller's `twoFactorSecret`
+    seller.twoFactorSecret = secret.base32;
+    seller.isMfaActive = true;
+    await seller.save();
+
+    const url = speakeasy.otpauthURL({
+      secret: secret.base32,
+      label: seller.name,
+      issuer: "harvestify.com",
+      encoding: "base32"
+    });
+    const qrImageUrl = await qrCode.toDataURL(url);
+
+     seller.qrCode = qrImageUrl;
+    await seller.save();
+
+    // Return the secret key to the client (for QR code generation)
+    responseReturn(res, 200, {
+      message: "2FA setup successful",
+      secret: secret.base32,
+      qrImageUrl,
+      seller
+    });
+  } catch (error) {
+    console.error("🚨 Error in setup2FA:", error);
+    responseReturn(res, 500, { error: "Internal Server Error" });
+  }
+};
+
+verify2FA = async (req, res) => {
+  const {token} = req.body;
+  console.log("token")
+  console.log(token)
+  console.log(req.id)
+  const seller = await sellerModel.findById(req.id);
+  console.log(seller)
+  if (!seller) {
+    return responseReturn(res, 404, { error: "Seller not found" });
+  }
+
+  const verified = speakeasy.totp.verify({
+    secret: seller.twoFactorSecret,
+    encoding: "base32",
+    token,
+    window: 2, // Allows +/- 30s clock drift
+  });
+  const generatedToken = speakeasy.totp({
+    secret: seller.twoFactorSecret,
+    encoding: "base32",
+  });
+  
+  console.log("Expected Token:", generatedToken);
+  console.log("Received Token:", token);
+
+  console.log(verified)
+  if(verified){
+   const jwtToken = await createToken({
+    id: seller._id,
+    role: seller.role,
+  });
+
+  // Set cookie (optional)
+  res.cookie("accessToken", jwtToken, {
+    httpOnly: true, // Prevents JavaScript access
+    secure: process.env.NODE_ENV === "production", // Secure flag in production
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days expiration
+  });
+
+  // Return success response
+  responseReturn(res, 200, {
+    token:jwtToken,
+    message: "Login Success",
+    username: seller.name,
+    isMfaActive: seller.isMfaActive,
+  });
+  }else{
+    console.log("walaaaaaaaaaaa")
+    return responseReturn(res, 400, { error: "Invalid Token."});
+  }
+};
+reset2FA = async (req, res) => {
+  try {
+    console.log("🔒 Setting up 2FA for:", req.id);
+
+    // Find seller using the authenticated user ID
+    const seller = await sellerModel.findById(req.id);
+    if (!seller) {
+      return responseReturn(res, 404, { error: "Seller not found" });
+    }
+
+    // Generate a new 2FA secret
+
+    // Update seller's `twoFactorSecret`
+    seller.twoFactorSecret = "";
+    seller.isMfaActive = false;
+    await seller.save();
+
+    // Return the secret key to the client (for QR code generation)
+    responseReturn(res, 200, {
+      message: "2FA reset successful",
+      seller
+    });
+
+  } catch (error) {
+    console.error("🚨 Error in Resetting 2FA:", error);
+    responseReturn(res, 500, { error: "Internal Server Error" });
+  }
+
 };
 
 }

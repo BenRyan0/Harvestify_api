@@ -36,6 +36,11 @@ const authorSchema = new Schema(
       discountType: { type: String, enum: ['percentage', 'fixed'], },
       value: { type: Number, }
     },
+    paymentTerm: {
+      type: Number,
+      default: 1,
+      required: true
+  },
   },
   { timestamps: true }
 );

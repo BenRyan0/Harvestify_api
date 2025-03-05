@@ -48,6 +48,11 @@ const traderDeal = new Schema({
         discountType: { type: String, enum: ['percentage', 'fixed'] },
         value: { type: Number }
     },
+    paymentTerm: {
+      type: Number,
+      default: 2,
+      required: true
+  },
     shipping_distance: { type: Number }
 }, {timestamps: true});
 

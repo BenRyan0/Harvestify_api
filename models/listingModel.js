@@ -109,6 +109,10 @@ const listingSchema = new Schema(
       type: Number,
       default: 0, // Default to 0 until updated
     },
+    actualHarvestYieldDate:{
+      type: Date,
+      required: false
+    }
 
   },
   { timestamps: true }

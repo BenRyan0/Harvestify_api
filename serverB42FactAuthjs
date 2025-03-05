@@ -13,12 +13,7 @@ const cron = require("node-cron");
 const generateHarvestNotifications = require("./utils/generateHarvestNotifications");
 const Speakeasy =require("speakeasy")
 
-const session = require("express-session")
-const passport = require("passport")
-
 const server = http.createServer(app)
-require("./utils/passportConfig")
-
 
 app.use(
   cors({
@@ -170,16 +165,6 @@ socket.on('send_message_seller_to_admin', msg => {
 })
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use(session({
-  secret: process.env.SESSION_SECRET || "secret",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 60000 * 60
-  }
-}));
-app.use(passport.initialize())
-app.use(passport.session())
 
 // demo only
 app.get("/trigger-notifications", async (req, res) => {
@@ -193,8 +178,8 @@ app.get("/trigger-notifications", async (req, res) => {
   }
 });
 
+// 2 Factor Auth
 
-app.use('/api/2fa', require('./routes/2fa/2FactorAuthRoutes'));
 // Routes
 app.use('/api', require('./routes/chatRoutes'));
 app.use('/api', require('./routes/dashboard/dashboardIndexRoutes'));
@@ -216,21 +201,8 @@ app.use('/api', require('./routes/dashboard/listingRoute'));
 app.use('/api', require('./routes/transaction/transactionRoutes'));
 
 
-app.post('/totp-secret', (request, response, next)=>{
-  var secret = Speakeasy.generateSecret({length:20});
-response.send({"secret":secret.base32})
 
-})
-app.post('/totp-generate', (request, response, next)=>{
 
-response.send({
-  "token": Speakeasy.totp({
-    secret: request.body.secret,
-    encoding : "base32"
-  })
-})
-
-})
 
 app.get("/", (req, res) => {
   res.send("Hello World!");

@@ -19,36 +19,31 @@ const transactionSchema = new mongoose.Schema({
     depositPaymentAmountProofUrl: { type: String },
     depositPaymentAmountProofMessage: { type: String },
     depositPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
-    date: { type: Date, default: Date.now }
   },
-  midwayPayment :{
-    midwayPaymentAmount: { type: Number },
-    midwayPaymentAmountProofUrl: { type: String },
-    midwayPaymentAmountProofMessage: { type: String },
-    midwayPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
-    date: { type: Date, default: Date.now }
 
-  },
-  partialPayment:{
-    partialPaymentAmount: { type: Number },
-    partialPaymentAmountProofUrl: { type: String },
-    partialPaymentAmountProofMessage: { type: String },
-    partialPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
-    date: { type: Date, default: Date.now }
-  },
-  finalPayment : {
-    finalPaymentAmount: { type: Number },
-    finalPaymentAmountProofUrl: { type: String },
-    finalPaymentAmountProofMessage: { type: String },
-    finalPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+  
+  depositPaymentAmount: { type: Number },
+  depositPaymentAmountProofUrl: { type: String },
+  depositPaymentAmountProofMessage: { type: String },
+  depositPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
 
-  },
-  handoffProof : {
-    handoffProofUrl: { type: String },
-    handoffProofCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
-    date: { type: Date, default: Date.now }
 
-  },
+  midwayPaymentAmount: { type: Number },
+  midwayPaymentAmountProofUrl: { type: String },
+  midwayPaymentAmountProofMessage: { type: String },
+  midwayPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+
+  partialPaymentAmount: { type: Number },
+  partialPaymentAmountProofUrl: { type: String },
+  partialPaymentAmountProofMessage: { type: String },
+  partialPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+
+
+  finalPaymentPaymentAmount: { type: Number },
+  finalPaymentAmountProofUrl: { type: String },
+  finalPaymentAmountProofMessage: { type: String },
+  finalPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+
   status: { type: String, default: 'Pending' },
   traderSteps: [
     {
@@ -68,27 +63,10 @@ const transactionSchema = new mongoose.Schema({
       confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'sellers' }
     }
   ],
-  review: {
-    name: {
-      type: String,
-
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5, // Ensure ratings are between 1 and 5
-    },
-    review: {
-      type: String,
-    },
-  },
-  reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' },
-
   buyerStep: { type: Number },
   sellerStep: { type: Number },
   totalSteps: { type: Number },
-  createdAt: { type: Date, default: Date.now },
-  isProductReceived : { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
 }, {
   indexes: [
     { unique: true, fields: ['seller', 'trader', 'listing', 'deal'] }

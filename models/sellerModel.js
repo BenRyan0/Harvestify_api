@@ -112,6 +112,19 @@ const sellerSchema = new Schema(
     memberCount:{
       type: Number,
       default: 1
+    },
+    isMfaActive: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
+    twoFactorSecret:{
+      type: String,
+      required: false
+    },
+    qrCode:{
+      type: String,
+      required: false
     }
    
   },

@@ -19,6 +19,7 @@ const cloudinary = require("cloudinary").v2;
 const sharp = require("sharp");
 const path = require("path");
 const mongoose = require("mongoose"); 
+// const traderDeal = require('../../models/traderDeal');
 
 
 
@@ -109,9 +110,9 @@ class transactionController {
               const { image } = files;
       
               // Validate required fields
-              if (!transactionId || !paymentType || !image) {
+              if (!transactionId || !paymentType || !image || !message) {
                   return res.status(400).json({
-                      error: "Transaction ID, payment type, or image not provided",
+                      error: "Please Do include an image proof and message",
                   });
               }
       
@@ -129,9 +130,9 @@ class transactionController {
       
               // Configure Cloudinary inside the method
               cloudinary.config({
-                  cloud_name: process.env.CLOUD_NAME,
-                  api_key: process.env.API_KEY,
-                  api_secret: process.env.API_SECRET,
+                  cloud_name: process.env.cloud_name,
+                  api_key: process.env.api_key,
+                  api_secret: process.env.api_secret,
                   secure: true,
               });
       
@@ -158,13 +159,14 @@ class transactionController {
                       { _id: transactionId },
                       {
                           $set: {
-                              buyerStep: paymentType === "Deposit" ? 3 : 2, // Example: 2 -> Deposit Confirmed, 3 -> Full Payment Confirmed
+                              buyerStep: paymentType === "Deposit" ? 3 : 3, // Example: 2 -> Deposit Confirmed, 3 -> Full Payment Confirmed
                               sellerStep: paymentType === "Deposit" ? 3 : 2, // Adjust seller step similarly
                           },
                       },
                       { new: true }
                   );
       
+                  console.log("TAE")
                   return res.status(201).json({
                       proof,
                       message: `${paymentType} proof submitted successfully`,
@@ -177,50 +179,54 @@ class transactionController {
           });
       };
     
-  getTransactionByDealId = async (req, res) => {
-    console.log("get------------------ 0-0");
-    try {
-      const { dealId } = req.params;
-      console.log(dealId);
+    getTransactionByDealId = async (req, res) => {
+        console.log("Fetching transactions for dealId...");
+        try {
+          const { dealId } = req.params;
+          console.log(dealId)
+      
+          // Validate dealId
+          if (!ObjectId.isValid(dealId)) {
+            return responseReturn(res, 400, { error: "Invalid dealId." });
+          }
+      
+          // Find transactions by dealId
+          const transactions = await Transaction.find({ deal:dealId });
+      
+          if (!transactions || transactions.length === 0) {
+            console.log("No transactions found for the given dealId.");
+            return responseReturn(res, 404, { message: "No transactions found for the provided dealId." });
+          }
+      
+          // Fetch proofs for each transaction
+          const proofs = await Proof.find({
+            transactionId: { $in: transactions.map((transaction) => transaction._id) },
+            paymentType: "Deposit",
+          });
+      
+          // Find a second proof with paymentType "FullPayment"
+          const proof2 = await Proof.findOne({
+            transactionId: { $in: transactions.map((transaction) => transaction._id) },
+            paymentType: "FullPayment",
+          });
+          console.log("TRANSACTION")
+          console.log("TRANSACTION");
+          console.log(JSON.stringify(transactions, null, 2));
+          
+      
+          // Return the response with transactions, proofs, and proof2
+          return responseReturn(res, 200, {
+            message: "Transactions with proofs retrieved successfully.",
+            transaction : transactions,
+            proofs,
+            proof2: proof2 || null, // Include proof2 or null if not found
+          });
+        } catch (error) {
+          console.error("Error occurred while fetching transactions:", error);
+          return responseReturn(res, 500, { error: error.message });
+        }
+      };
   
-      // Validate dealId
-      if (!ObjectId.isValid(dealId)) {
-        return responseReturn(res, 400, {
-          error: "Invalid dealId.",
-        });
-      }
-  
-      // Find transactions by dealId
-      const transactions = await Transaction.find({ dealId });
-  
-      if (!transactions || transactions.length === 0) {
-        console.log("NO SHIT");
-        return responseReturn(res, 404, {
-          message: "No transactions found for the provided dealId.",
-        });
-      }
-  
-      // Fetch proofs for each transaction
-      const proofs = await Proof.find({
-        transactionId: { $in: transactions.map(transaction => transaction._id) },
-      });
-  
-      // Return the response with both transactions and the corresponding proofs
-      responseReturn(res, 200, {
-        message: "Transactions with proofs retrieved successfully.",
-        transactions,
-        proofs,
-      });
-    } catch (error) {
-      console.log("HIT");
-      console.log(error.message);
-      responseReturn(res, 500, {
-        error: error.message,
-      });
-    }
-  };
- 
-
   // Method to set deposit status to confirmed
   setDepositStatusConfirmed = async (req, res) => {
     try {
@@ -254,7 +260,7 @@ class transactionController {
       transaction.depositStatus = "Confirmed";
 
       // Optionally, you can update the buyer and seller steps based on your workflow
-      transaction.buyerStep = 3; // Example step: 4 - Deposit Confirmed
+      transaction.buyerStep = 4; // Example step: 4 - Deposit Confirmed
       transaction.sellerStep = 4; // Example step: 3 - Waiting for Full Payment
 
       // Save the updated transaction
@@ -273,49 +279,200 @@ class transactionController {
       });
     }
   };
-  
-  // getTransactionByDealIdTrader = async (req, res) => {
-  //     console.log("get------------------ 0-0")
-  //     try {
-  //         const { traderDealId } = req.params;
-  //         console.log(traderDealId)
-          
+  // setFullPaymentStatusConfirmed = async (req, res) => {
+  //   try {
+  //     console.log(req.body)
+  //     const { transactionId } = req.body; // Transaction ID passed in the body of the request
 
-  //         // Validate dealId
-  //         if (!ObjectId.isValid(traderDealId)) {
-  //           console.log("SHIT1")
-  //             return responseReturn(res, 400, {
-  //                 error: "Invalid dealId.",
-  //             });
-  //         }
-
-  //         // Find transactions by dealId
-  //         const transactions = await Transaction.find({ traderDealId });
-
-  //         if (!transactions || transactions.length === 0) {
-  //           console.log("NO SHIT")
-  //             return responseReturn(res, 404, {
-  //                 message: "No transactions found for the provided dealId.",
-  //             });
-  //         }
-
-  //         console.log("-------------------------")
-  //         console.log(transactions)
-  //         console.log("------------------------- 0 0")
-
-  //         responseReturn(res, 200, {
-  //             message: "Transactions retrieved successfully.",
-  //             transactions,
-  //         });
-  //     } catch (error) {
-  //       console.log("HIT")
-  //       console.log(error.message)
-  //         responseReturn(res, 500, {
-  //             error: error.message,
-  //         });
+  //     // Validate if the transactionId is provided
+  //     if (!transactionId) {
+  //       return responseReturn(res, 400, {
+  //         error: "Transaction ID is required.",
+  //       });
   //     }
+
+  //     // Validate if the transactionId is a valid ObjectId
+  //     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+  //       return responseReturn(res, 400, {
+  //         error: "Invalid transactionId.",
+  //       });
+  //     }
+
+  //     // Find the transaction by ID
+  //     const transaction = await Transaction.findById(transactionId);
+
+  //     if (!transaction) {
+  //       return responseReturn(res, 404, {
+  //         error: "Transaction not found.",
+  //       });
+  //     }
+
+  //     // Update the depositStatus to "Confirmed"
+  //     transaction.fullPaymentStatus = "Confirmed";
+
+  //     // Optionally, you can update the buyer and seller steps based on your workflow
+  //     transaction.buyerStep = 7; // Example step: 4 - Deposit Confirmed
+  //     transaction.sellerStep = 7; // Example step: 3 - Waiting for Full Payment
+
+  //     // Save the updated transaction
+  //     await transaction.save();
+
+  //     // Send response with the updated transaction
+  //     responseReturn(res, 200, {
+  //       message: "Deposit status updated to confirmed successfully.",
+  //       transaction,
+  //     });
+      
+  //   } catch (error) {
+  //     console.error("Error updating deposit status:", error);
+  //     responseReturn(res, 500, {
+  //       error: error.message,
+  //     });
+  //   }
   // };
 
+// {asdasd}
+
+  
+  // setFullPaymentStatusConfirmed = async (req, res) => {
+  //   try {
+  //     console.log(req.body)
+  //     const { transactionId } = req.body; // Transaction ID passed in the body of the request
+
+  //     // Validate if the transactionId is provided
+  //     if (!transactionId) {
+  //       return responseReturn(res, 400, {
+  //         error: "Transaction ID is required.",
+  //       });
+  //     }
+
+  //     // Validate if the transactionId is a valid ObjectId
+  //     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+  //       return responseReturn(res, 400, {
+  //         error: "Invalid transactionId.",
+  //       });
+  //     }
+
+  //     // Find the transaction by ID
+  //     const transaction = await Transaction.findById(transactionId);
+
+  //     if (!transaction) {
+  //       return responseReturn(res, 404, {
+  //         error: "Transaction not found.",
+  //       });
+  //     }
+
+  //     // Update the depositStatus to "Confirmed"
+  //     transaction.fullPaymentStatus = "Confirmed";
+
+  //     // Optionally, you can update the buyer and seller steps based on your workflow
+  //     transaction.buyerStep = 7; // Example step: 4 - Deposit Confirmed
+  //     transaction.sellerStep = 7; // Example step: 3 - Waiting for Full Payment
+
+  //     // Save the updated transaction
+  //     await transaction.save();
+
+  //     // Send response with the updated transaction
+  //     responseReturn(res, 200, {
+  //       message: "Deposit status updated to confirmed successfully.",
+  //       transaction,
+  //     });
+      
+  //   } catch (error) {
+  //     console.error("Error updating deposit status:", error);
+  //     responseReturn(res, 500, {
+  //       error: error.message,
+  //     });
+  //   }
+  // };
+
+  
+  setFullPaymentStatusConfirmed = async (req, res) => {
+    try {
+      console.log(req.body);
+      const { transactionId } = req.body; // Transaction ID passed in the body of the request
+  
+      // Validate if the transactionId is provided
+      if (!transactionId) {
+        return responseReturn(res, 400, {
+          error: "Transaction ID is required.",
+        });
+      }
+  
+      // Validate if the transactionId is a valid ObjectId
+      if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+        return responseReturn(res, 400, {
+          error: "Invalid transactionId.",
+        });
+      }
+  
+      // Find the transaction by ID
+      const transaction = await Transaction.findById(transactionId);
+  
+      if (!transaction) {
+        return responseReturn(res, 404, {
+          error: "Transaction not found.",
+        });
+      }
+  
+      // Update the fullPaymentStatus to "Confirmed"
+      transaction.fullPaymentStatus = "Confirmed";
+  
+      // Optionally, you can update the buyer and seller steps based on your workflow
+      transaction.buyerStep = 7; // Example step: 7 - Full Payment Confirmed
+      transaction.sellerStep = 7; // Example step: 7 - Full Payment Confirmed
+  
+      // Save the updated transaction
+      await transaction.save();
+  
+      // Find the associated traderDeal using the traderDealId from the transaction
+      const traderDeal_ = await traderDeal.findById(transaction.traderDealId);
+  
+      if (!traderDeal_) {
+        return responseReturn(res, 404, {
+          error: "Trader Deal not found.",
+        });
+      }
+  
+      // Update shipPickUpStatus to "completed" and shippingInfo to "completed" in the traderDeal
+      traderDeal_.shipPickUpStatus = "completed";
+      traderDeal_.shippingInfo = "completed";
+      traderDeal_.paymentStatus = "completed";
+      await traderDeal_.save();
+  
+      console.log("traderDeal_.dealId: " + traderDeal_);
+  
+      // Find the associated authorDeal using the dealId from the traderDeal
+      const authorDeal_ = await authorModel.findOne({ dealId: traderDeal_._id });
+  
+      if (!authorDeal_) {
+        return responseReturn(res, 404, {
+          error: "Author Deal not found.",
+        });
+      }
+  
+      // Update shipPickUpStatus to "completed" and shippingInfo to "completed" in the authorDeal
+      authorDeal_.shipPickUpStatus = "completed";
+      authorDeal_.shippingInfo = "completed";
+      authorDeal_.paymentStatus = "completed";
+      await authorDeal_.save();
+  
+      // Send response with the updated transaction, traderDeal, and authorDeal
+      responseReturn(res, 200, {
+        message: "Full payment status confirmed and shipping information updated to 'completed'.",
+        transaction,
+        traderDeal_,
+        authorDeal_
+      });
+  
+    } catch (error) {
+      console.error("Error updating full payment status:", error);
+      responseReturn(res, 500, {
+        error: error.message,
+      });
+    }
+  };
+  
   getTransactionByDealIdTrader = async (req, res) => {
     console.log("get------------------ 0-0");
     try {
@@ -329,6 +486,15 @@ class transactionController {
                 error: "Invalid traderDealId.",
             });
         }
+
+          // Fetch the traderDeal by traderDealId
+          const deal = await traderDeal.findById(traderDealId);
+          if (!deal) {
+              console.log("TraderDeal not found");
+              return responseReturn(res, 404, {
+                  message: "TraderDeal not found for the provided traderDealId.",
+              });
+          }
 
         // Find transactions by traderDealId
         const transactions = await Transaction.find({ traderDealId });
@@ -349,9 +515,9 @@ class transactionController {
         // Response with transactions and DeliveryHandoffProofs
         console.log("Transactions and DeliveryHandoffProofs retrieved successfully");
         responseReturn(res, 200, {
-            // message: "Transactions retrieved successfully.",
             transactions,
             DeliveryHandoffProofs,
+            deal
         });
     } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -362,90 +528,651 @@ class transactionController {
 };
 
 
-  delivery_handoff_proof_submit = async (req, res) => {
+//   delivery_handoff_proof_submit = async (req, res) => {
 
-    const form = new formidable.IncomingForm();
+//     const form = new formidable.IncomingForm();
 
-    form.parse(req, async (err, fields, files) => {
-        if (err) {
-            return res.status(400).json({ error: "Form parsing error" });
-        }
+//     form.parse(req, async (err, fields, files) => {
+//         if (err) {
+//             return res.status(400).json({ error: "Form parsing error" });
+//         }
 
-        const { transactionId } = fields;
-        console.log("---------------------------------- >")
-        console.log(transactionId)
-        const { image } = files;
+//         const { transactionId } = fields;
+//         console.log("---------------------------------- >")
+//         console.log(transactionId)
+//         const { image } = files;
 
-        // Validate required fields
-        if (!transactionId || !image) {
-          console.log("01")
-            return res.status(400).json({
-                error: "Transaction ID, or image not provided",
-            });
-        }
+//         // Validate required fields
+//         if (!transactionId || !image) {
+//           console.log("01")
+//             return res.status(400).json({
+//                 error: "Transaction ID, or image not provided",
+//             });
+//         }
 
-        console.log("02")
-        // Check if a Deposit or FullPayment already exists for this transactionId
-        const existingProof = await DeliveryHandoffProof.findOne({ transactionId });
+//         console.log("02")
+//         // Check if a Deposit or FullPayment already exists for this transactionId
+//         const existingProof = await DeliveryHandoffProof.findOne({ transactionId });
 
-        console.log("03")
+//         console.log("03")
 
-        if (existingProof) {
-          console.log("NAA NA")
-            return responseReturn(res, 400, { error: "Proof already exists for this transaction" });
-        }
+//         if (existingProof) {
+//           console.log("NAA NA")
+//             return responseReturn(res, 400, { error: "Proof already exists for this transaction" });
+//         }
 
-        console.log("04")
-        // Configure Cloudinary inside the method
-        cloudinary.config({
-            cloud_name: process.env.CLOUD_NAME,
-            api_key: process.env.API_KEY,
-            api_secret: process.env.API_SECRET,
-            secure: true,
-        });
+//         console.log("04")
+        
+//         // Configure Cloudinary inside the method
+//         cloudinary.config({
+//           cloud_name: process.env.cloud_name,
+//           api_key: process.env.api_key,
+//           api_secret: process.env.api_secret,
+//           secure: true,
+//       });
 
-        console.log("05")
-        try {
-            // Resize and upload the image to Cloudinary
-            const resizedImagePath = await this.resizeImage(image.filepath || image.path); // Use `this` to call the method
-            const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
-                folder: "DeliveryHandoffProofs",
-            });
+//         console.log("05")
+//         try {
+//             // Resize and upload the image to Cloudinary
+//             const resizedImagePath = await this.resizeImage(image.filepath || image.path); // Use `this` to call the method
+//             const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
+//                 folder: "DeliveryHandoffProofs",
+//             });
 
             
-        console.log("06")
-            // Clean up local file
-            fs.unlinkSync(resizedImagePath);
+//         console.log("06")
+//             // Clean up local file
+//             fs.unlinkSync(resizedImagePath);
 
-            // Save proof to the database
-            const DeliveryHandoffProof_ = await DeliveryHandoffProof.create({
-                transactionId,
-                imageUrl: uploadResult.url,
-            });
+//             // Save proof to the database
+//             const DeliveryHandoffProof_ = await DeliveryHandoffProof.create({
+//                 transactionId,
+//                 imageUrl: uploadResult.url,
+//             });
 
-            // Update the transaction with new step values based on the payment type
-            const updatedTransaction = await Transaction.findOneAndUpdate(
-                { _id: transactionId },
-                {
-                    $set: {
-                        buyerStep: 3 , // Example: 2 -> Deposit Confirmed, 3 -> Full Payment Confirmed
-                        sellerStep: 5 , // Adjust seller step similarly
-                    },
-                },
-                { new: true }
-            );
+//             // Update the transaction with new step values based on the payment type
+//             const updatedTransaction = await Transaction.findOneAndUpdate(
+//                 { _id: transactionId },
+//                 {
+//                     $set: {
+//                         buyerStep: 4 , // Example: 2 -> Deposit Confirmed, 3 -> Full Payment Confirmed
+//                         sellerStep: 5 , // Adjust seller step similarly
+//                     },
+//                 },
+//                 { new: true }
+//             );
 
-            return res.status(201).json({
-               DeliveryHandoffProof: DeliveryHandoffProof_ ,
-                message: `Delivery/Handoff proof submitted successfully`,
-                updatedTransaction,
-            });
-        } catch (error) {
-            console.error("Error submitting proof:", error);
-            return res.status(500).json({ error: "Internal server error" });
-        }
-    });
+//             return res.status(201).json({
+//                DeliveryHandoffProof: DeliveryHandoffProof_ ,
+//                 message: `Delivery/Handoff proof submitted successfully`,
+//                 updatedTransaction,
+//             });
+//         } catch (error) {
+//             console.error("Error submitting proof:", error);
+//             return res.status(500).json({ error: "Internal server error" });
+//         }
+//     });
+// };
+
+
+// delivery_handoff_proof_submit = async (req, res) => {
+//   const form = new formidable.IncomingForm();
+
+//   form.parse(req, async (err, fields, files) => {
+//       if (err) {
+//           return res.status(400).json({ error: "Form parsing error" });
+//       }
+
+//       const { transactionId } = fields;
+//       const { image } = files;
+
+//       // Validate required fields
+//       if (!transactionId || !image) {
+//           return res.status(400).json({
+//               error: "Transaction ID or image not provided",
+//           });
+//       }
+
+//       try {
+//           // Check if proof already exists for this transaction
+//           const existingProof = await DeliveryHandoffProof.findOne({ transactionId });
+//           if (existingProof) {
+//               return res.status(400).json({ error: "Proof already exists for this transaction" });
+//           }
+
+//           // Configure Cloudinary
+//           cloudinary.config({
+//               cloud_name: process.env.cloud_name,
+//               api_key: process.env.api_key,
+//               api_secret: process.env.api_secret,
+//               secure: true,
+//           });
+
+//           // Resize and upload the image to Cloudinary
+//           const resizedImagePath = await this.resizeImage(image.filepath || image.path); // Use `this` to call the method
+//           const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
+//               folder: "DeliveryHandoffProofs",
+//           });
+
+//           // Clean up local file
+//           fs.unlinkSync(resizedImagePath);
+
+//           // Save proof to the database
+//           const DeliveryHandoffProof_ = await DeliveryHandoffProof.create({
+//               transactionId,
+//               imageUrl: uploadResult.url,
+//           });
+
+//           // Update the transaction with new step values
+//           const updatedTransaction = await Transaction.findOneAndUpdate(
+//               { _id: transactionId },
+//               {
+//                   $set: {
+//                       buyerStep: 4, // Example: Delivery confirmed
+//                       sellerStep: 5, // Example: Delivery acknowledged
+//                   },
+//               },
+//               { new: true }
+//           );
+
+//           // Find and update the TraderDeal associated with the transaction
+//           const transaction = await Transaction.findById(transactionId);
+//           if (!transaction) {
+//               return res.status(404).json({ error: "Transaction not found" });
+//           }
+
+//           const updatedTraderDeal = await TraderDeal.findOneAndUpdate(
+//               { _id: transaction.traderDealId },
+//               {
+//                   $set: {
+//                       shippingInfo: "delivered",
+//                       shipPickUpStatus: "delivered",
+//                   },
+//               },
+//               { new: true }
+//           );
+
+//           return res.status(201).json({
+//               DeliveryHandoffProof: DeliveryHandoffProof_,
+//               message: `Delivery/Handoff proof submitted successfully`,
+//               updatedTransaction,
+//               updatedTraderDeal,
+//           });
+//       } catch (error) {
+//           console.error("Error submitting proof:", error);
+//           return res.status(500).json({ error: "Internal server error" });
+//       }
+//   });
+// };
+
+
+// delivery_handoff_proof_submit = async (req, res) => {
+//   const form = new formidable.IncomingForm();
+
+//   form.parse(req, async (err, fields, files) => {
+//       if (err) {
+//           return res.status(400).json({ error: "Form parsing error" });
+//       }
+
+//       const { transactionId } = fields;
+//       const { image } = files;
+
+//       // Validate required fields
+//       if (!transactionId || !image) {
+//           return res.status(400).json({
+//               error: "Transaction ID, or image not provided",
+//           });
+//       }
+
+//       // Check if a DeliveryHandoffProof already exists for this transactionId
+//       const existingProof = await DeliveryHandoffProof.findOne({ transactionId });
+
+//       if (existingProof) {
+//           return res.status(400).json({ error: "Proof already exists for this transaction" });
+//       }
+
+//       // Configure Cloudinary
+//       cloudinary.config({
+//           cloud_name: process.env.cloud_name,
+//           api_key: process.env.api_key,
+//           api_secret: process.env.api_secret,
+//           secure: true,
+//       });
+
+//       try {
+//           // Resize and upload the image to Cloudinary
+//           const resizedImagePath = await this.resizeImage(image.filepath || image.path);
+//           const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
+//               folder: "DeliveryHandoffProofs",
+//           });
+
+//           // Clean up local file
+//           fs.unlinkSync(resizedImagePath);
+
+//           // Save proof to the database
+//           const deliveryHandoffProof = await DeliveryHandoffProof.create({
+//               transactionId,
+//               imageUrl: uploadResult.url,
+//           });
+
+//           // Update the Transaction steps
+//           const updatedTransaction = await Transaction.findOneAndUpdate(
+//               { _id: transactionId },
+//               {
+//                   $set: {
+//                       buyerStep: 4, // Example: 4 -> Delivery confirmed
+//                       sellerStep: 5, // Adjust seller step similarly
+//                   },
+//               },
+//               { new: true }
+//           );
+
+//           // Update the corresponding TraderDeal fields
+//           await traderDeal.updateOne(
+//               { transactionId },
+//               {
+//                   $set: {
+//                       "shippingInfo": "delivered",  // Mark as delivered
+//                       "shipPickUpStatus": "delivered", // Mark pickup status as delivered
+//                   },
+//               }
+//           );
+
+//           return res.status(201).json({
+//               DeliveryHandoffProof: deliveryHandoffProof,
+//               message: `Delivery/Handoff proof submitted successfully`,
+//               updatedTransaction,
+//           });
+//       } catch (error) {
+//           console.error("Error submitting proof:", error);
+//           return res.status(500).json({ error: "Internal server error" });
+//       }
+//   });
+// };
+
+
+delivery_handoff_proof_submit = async (req, res) => {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, async (err, fields, files) => {
+      if (err) {
+          return res.status(400).json({ error: "Form parsing error" });
+      }
+
+      const { transactionId } = fields;  // Added authDealId and traderDealId
+      const { image } = files;
+
+      // Validate required fields
+      if (!transactionId || !image) {
+          return res.status(400).json({
+              error: "Transaction ID, image, authDealId, or traderDealId not provided",
+          });
+      }
+
+      // Check if a DeliveryHandoffProof already exists for this transactionId
+      const existingProof = await DeliveryHandoffProof.findOne({ transactionId });
+
+      if (existingProof) {
+          return res.status(400).json({ error: "Proof already exists for this transaction" });
+      }
+
+      // Configure Cloudinary
+      cloudinary.config({
+          cloud_name: process.env.cloud_name,
+          api_key: process.env.api_key,
+          api_secret: process.env.api_secret,
+          secure: true,
+      });
+
+      try {
+          // Resize and upload the image to Cloudinary
+          const resizedImagePath = await this.resizeImage(image.filepath || image.path);
+          const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
+              folder: "DeliveryHandoffProofs",
+          });
+
+          // Clean up local file
+          fs.unlinkSync(resizedImagePath);
+
+          // Save proof to the database
+          const deliveryHandoffProof = await DeliveryHandoffProof.create({
+              transactionId,
+              imageUrl: uploadResult.url,
+          });
+
+          // Update the Transaction steps and include authDealId and traderDealId
+          const updatedTransaction = await Transaction.findOneAndUpdate(
+              { _id: transactionId },
+              {
+                  $set: {
+                      buyerStep: 4, // Example: 4 -> Delivery confirmed
+                      sellerStep: 5, // Adjust seller step similarly
+                      // authDealId: authDealId,  // Link the auth deal ID
+                      // traderDealId: traderDealId,  // Link the trader deal ID
+                  },
+              },
+              { new: true }
+          );
+
+          // Now, update the associated traderDeal based on the transactionId
+          const traderDealToUpdate = await traderDeal.findOne({ _id: updatedTransaction.traderDealId });
+
+          if (traderDealToUpdate) {
+              // Update shippingInfo and shipPickUpStatus on the traderDeal
+              traderDealToUpdate.shippingInfo = "delivered";
+              traderDealToUpdate.shipPickUpStatus = "delivered";
+
+              await traderDealToUpdate.save();
+          }
+
+          // Now update the associated authDeal
+          const authDealToUpdate = await authorModel.findOne({ _id: updatedTransaction.dealId });
+
+          if (authDealToUpdate) {
+              // Update shippingInfo and shipPickUpStatus on the authDeal
+              authDealToUpdate.shippingInfo = "delivered";
+              authDealToUpdate.shipPickUpStatus = "delivered";
+
+              await authDealToUpdate.save();
+          }
+
+          console.log()
+          return res.status(201).json({
+              DeliveryHandoffProof: deliveryHandoffProof,
+              message: `Delivery/Handoff proof submitted successfully`,
+              updatedTransaction,
+          });
+      } catch (error) {
+          console.error("Error submitting proof:", error);
+          return res.status(500).json({ error: "Internal server error" });
+      }
+  });
 };
+
+// trader_handoff_confirm = async (req, res) => {
+//   console.log("TAE");
+//   console.log(req.body);
+  
+//   try {
+//       const { transactionId } = req.body;
+
+//       // Validate if the transactionId is provided
+//       if (!transactionId) {
+//           return responseReturn(res, 400, {
+//               error: "Transaction ID is required.",
+//           });
+//       }
+
+//       // Validate if the transactionId is a valid ObjectId
+//       if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+//           return responseReturn(res, 400, {
+//               error: "Invalid transactionId.",
+//           });
+//       }
+
+//       // Find the transaction by ID
+//       const transaction = await Transaction.findById(transactionId);
+
+//       if (!transaction) {
+//           return responseReturn(res, 404, {
+//               error: "Transaction not found.",
+//           });
+//       }
+
+//       console.log("transaction.traderDealId: " + transaction.traderDealId);
+
+//       // Find the associated traderDeal using the traderDealId from the transaction
+//       const traderDeal_ = await traderDeal.findById(transaction.traderDealId);
+
+//       if (!traderDeal_) {
+//           return responseReturn(res, 404, {
+//               error: "Trader Deal not found.",
+//           });
+//       }
+
+//       // Update shipPickUpStatus to "received" in the traderDeal
+//       traderDeal_.shipPickUpStatus = "received";
+//       await traderDeal_.save();
+
+//       console.log("traderDeal_.dealId: " + traderDeal_);
+
+//       // Find the associated authorDeal using the dealId from the traderDeal
+//       const authorDeal_ = await authorModel.findOne({ dealId: traderDeal_._id });
+
+//       if (!authorDeal_) {
+//           return responseReturn(res, 404, {
+//               error: "Author Deal not found.",
+//           });
+//       }
+
+//       // Update shipPickUpStatus to "received" in the authorDeal
+//       authorDeal_.shipPickUpStatus = "received";
+//       await authorDeal_.save();
+
+//       // Update the sellerStep and buyerStep in the transaction
+//       transaction.sellerStep = 6;  // You can adjust this value based on your flow
+//       transaction.buyerStep = 5;  // Adjust accordingly
+
+//       // Save the updated transaction
+//       await transaction.save();
+
+//       // Respond with the updated transaction, traderDeal, and authorDeal
+//       return responseReturn(res, 200, {
+//           message: "Handoff confirmed successfully. Ship pick-up status updated to 'received'.",
+//           transaction,
+//           traderDeal_,
+//           authorDeal_
+//       });
+
+//   } catch (error) {
+//       console.error("Error confirming handoff:", error);
+//       return responseReturn(res, 500, {
+//           error: error.message,
+//       });
+//   }
+// };
+
+
+trader_handoff_confirm = async (req, res) => {
+  console.log("TAE");
+  console.log(req.body);
+
+  try {
+      const { transactionId } = req.body;
+
+      // Validate if the transactionId is provided
+      if (!transactionId) {
+          return responseReturn(res, 400, {
+              error: "Transaction ID is required.",
+          });
+      }
+
+      // Validate if the transactionId is a valid ObjectId
+      if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+          return responseReturn(res, 400, {
+              error: "Invalid transactionId.",
+          });
+      }
+
+      // Find the transaction by ID
+      const transaction = await Transaction.findById(transactionId);
+
+      if (!transaction) {
+          return responseReturn(res, 404, {
+              error: "Transaction not found.",
+          });
+      }
+
+      console.log("transaction.traderDealId: " + transaction.traderDealId);
+
+      // Find the associated traderDeal using the traderDealId from the transaction
+      const traderDeal_ = await traderDeal.findById(transaction.traderDealId);
+
+      if (!traderDeal_) {
+          return responseReturn(res, 404, {
+              error: "Trader Deal not found.",
+          });
+      }
+
+      // Update shipPickUpStatus to "received" and shippingInfo to "delivered" in the traderDeal
+      traderDeal_.shipPickUpStatus = "received";
+      traderDeal_.shippingInfo = "received";
+      await traderDeal_.save();
+
+      console.log("traderDeal_.dealId: " + traderDeal_);
+
+      // Find the associated authorDeal using the dealId from the traderDeal
+      const authorDeal_ = await authorModel.findOne({ dealId: traderDeal_._id });
+
+      if (!authorDeal_) {
+          return responseReturn(res, 404, {
+              error: "Author Deal not found.",
+          });
+      }
+
+      // Update shipPickUpStatus to "received" and shippingInfo to "delivered" in the authorDeal
+      authorDeal_.shipPickUpStatus = "received";
+      authorDeal_.shippingInfo = "received";
+      await authorDeal_.save();
+
+      // Update the sellerStep and buyerStep in the transaction
+      transaction.sellerStep = 6;  // You can adjust this value based on your flow
+      transaction.buyerStep = 5;  // Adjust accordingly
+
+      // Save the updated transaction
+      await transaction.save();
+
+      // Respond with the updated transaction, traderDeal, and authorDeal
+      return responseReturn(res, 200, {
+          message: "Handoff confirmed successfully. Ship pick-up status updated to 'received' and shippingInfo to 'delivered'.",
+          transaction,
+          traderDeal_,
+          authorDeal_
+      });
+
+  } catch (error) {
+      console.error("Error confirming handoff:", error);
+      return responseReturn(res, 500, {
+          error: error.message,
+      });
+  }
+};
+
+proof_submit2 = async (req, res) => {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, async (err, fields, files) => {
+      if (err) {
+          return res.status(400).json({ error: "Form parsing error" });
+      }
+
+      const { transactionId, message, paymentType } = fields;
+      const { image } = files;
+
+      // Validate required fields
+      if (!transactionId || !paymentType || !image) {
+          return res.status(400).json({
+              error: "Transaction ID, payment type, or image not provided",
+          });
+      }
+
+      // Validate payment type (either Deposit or FullPayment)
+      if (!["Deposit", "FullPayment"].includes(paymentType)) {
+          return res.status(400).json({ error: "Invalid payment type" });
+      }
+
+      // Check if a Deposit or FullPayment already exists for this transactionId
+      const existingProof = await Proof.findOne({ transactionId, paymentType });
+
+      if (existingProof) {
+          return responseReturn(res, 400, { error: "Proof already exists for this transaction" });
+      }
+
+      // Configure Cloudinary inside the method
+      cloudinary.config({
+        cloud_name: process.env.cloud_name,
+        api_key: process.env.api_key,
+        api_secret: process.env.api_secret,
+        secure: true,
+    });
+
+      try {
+          // Resize and upload the image to Cloudinary
+          const resizedImagePath = await this.resizeImage(image.filepath || image.path); // Use `this` to call the method
+          const uploadResult = await cloudinary.uploader.upload(resizedImagePath, {
+              folder: "proofs",
+          });
+
+          // Clean up local file
+          fs.unlinkSync(resizedImagePath);
+
+          // Save proof to the database
+          const proof = await Proof.create({
+              transactionId,
+              paymentType,
+              imageUrl: uploadResult.url,
+              message,
+          });
+
+          // Update the transaction with new step values based on the payment type
+          const updatedTransaction = await Transaction.findOneAndUpdate(
+              { _id: transactionId },
+              {
+                  $set: {
+                      buyerStep: paymentType === "FullPayment" ? 6 : 5, // Example: 2 -> Deposit Confirmed, 3 -> Full Payment Confirmed
+                      sellerStep: paymentType === "FullPayment" ? 6 : 5, // Adjust seller step similarly
+                  },
+              },
+              { new: true }
+          );
+
+          return res.status(201).json({
+              proof,
+              message: `${paymentType} proof submitted successfully`,
+              updatedTransaction,
+          });
+      } catch (error) {
+          console.error("Error submitting proof:", error);
+          return res.status(500).json({ error: "Internal server error" });
+      }
+  });
+};
+deleteTraderDeal = async (req, res) => {
+  const {traderDealId} = req.params;
+  console.log(req.params)
+
+  try {
+    // Validate traderDealId as a valid MongoDB ObjectId
+    if (!ObjectId.isValid(traderDealId)) {
+      return responseReturn(res, 400, "Invalid traderDeal ID");
+    }
+
+    // Find the traderDeal by its ID
+    const traderDealData = await traderDeal.findById(traderDealId);
+
+    if (!traderDealData) {
+      return responseReturn(res, 404, "TraderDeal not found");
+    }
+
+    // Extract the dealId from the traderDeal
+    const dealId = traderDealData._id;
+
+    // Delete the traderDeal
+    await traderDeal.findByIdAndDelete(traderDealId);
+
+    // Delete the associated authorDeal with the same dealId
+    const deletedAuthorDeal = await authorModel.deleteOne({ dealId });
+
+    if (deletedAuthorDeal.deletedCount === 0) {
+      console.warn(`No associated AuthorDeal found for dealId: ${dealId}`);
+    }
+
+    responseReturn(res, 200, "TraderDeal and associated AuthorDeal deleted successfully");
+  } catch (error) {
+    console.error("Error deleting traderDeal and associated authorDeal:", error);
+    responseReturn(res, 500, "An error occurred while deleting the records", { error });
+  }}
+
 }
 
 module.exports = new transactionController();

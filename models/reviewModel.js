@@ -44,7 +44,7 @@ reviewSchema.pre("save", async function (next) {
     const transaction = await Transaction.findById(this.transactionId);
 
     // Ensure the transaction exists and is fully paid
-    if (!transaction || transaction.fullPaymentStatus !== "Confirmed") {
+    if (!transaction || transaction.finalPayment.finalPaymentCompleted !== "Completed") {
       throw new Error(
         "Review cannot be submitted. The transaction is not completed."
       );
@@ -52,7 +52,7 @@ reviewSchema.pre("save", async function (next) {
 
     // Check that the transaction is associated with the correct seller and listing
     if (
-      transaction.sellerId.toString() !== this.sellerId.toString() ||
+      transaction.seller.toString() !== this.sellerId.toString() ||
       transaction.listingId.toString() !== this.listingId.toString()
     ) {
       throw new Error("Transaction details do not match the review.");

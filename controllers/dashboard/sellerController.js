@@ -2,6 +2,8 @@ const { responseReturn } = require("../../utils/response")
 const sellerModel = require('../../models/sellerModel') 
 const traderModel = require("../../models/traderModel")
 const notificationModel = require("../../models/Notification/notificationModel")
+const mongoose = require("mongoose"); // CommonJS (for Node.js)
+
 
 class sellerController {
     
@@ -248,7 +250,7 @@ class sellerController {
           const notifications = await notificationModel.find({ sellerId }).sort({ createdAt: -1 });
       
           // Count total notifications
-          const totalNotifications = await notificationModel.countDocuments({ sellerId });
+          const totalNotifications = await notificationModel.countDocuments({ sellerId,isRead: false });
       
           responseReturn(res, 200, { totalNotifications, notifications });
         } catch (error) {
@@ -256,6 +258,51 @@ class sellerController {
           responseReturn(res, 500, { error: error.message });
         }
       };
+
+      set_notification_seen = async (req, res) => {
+        const { notificationId, userId} = req.body; // Get notificationId and sellerId from request body
+        console.log(req.body)
+        let sellerId = userId
+    
+        // Validate notificationId format
+        if (!notificationId || !mongoose.Types.ObjectId.isValid(notificationId)) {
+            return res.status(400).json({ error: "Invalid or missing Notification ID" });
+        }
+    
+        if (!sellerId || !mongoose.Types.ObjectId.isValid(sellerId)) {
+            return res.status(400).json({ error: "Invalid or missing User ID" });
+        }
+    
+        try {
+            // Update the notification's seen status
+            const updatedNotification = await notificationModel.findByIdAndUpdate(
+                notificationId,
+                { isRead: true },
+                { new: true } // Return the updated document
+            );
+    
+            if (!updatedNotification) {
+                return res.status(404).json({ error: "Notification not found" });
+            }
+    
+            // Fetch updated notifications and unseen count for the user
+            const totalNotifications = await notificationModel.countDocuments({ sellerId, isRead: false });
+    
+            const notifications = await notificationModel.find({ sellerId }) 
+                .sort({ createdAt: -1 })
+                .limit()
+                .lean();
+
+
+                console.log(notifications)
+                console.log(totalNotifications)
+    
+            return res.status(200).json({ notifications, totalNotifications });
+        } catch (error) {
+            console.error("Error updating notification:", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    };
       
 }
 

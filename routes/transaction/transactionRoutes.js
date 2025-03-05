@@ -22,4 +22,8 @@ router.post('/trader/final-payment-add',transactionController.proof_submit2)
 router.delete('/trader/traderDeal-delete/:traderDealId',transactionController.deleteTraderDeal)
 
 
+
+router.put('/transactions/:id/deposit',transactionController.updateDepositPayment)
+
+
 module.exports = router;

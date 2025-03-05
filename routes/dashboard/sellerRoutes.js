@@ -21,5 +21,10 @@ router.post('/trader-status-update',authMiddleware,sellerController.trader_statu
 
 router.get('/get-seller-notification/:sellerId',authMiddleware,sellerController.getSellerNotifications)
 
+router.post('/set-notification-seen',authMiddleware,sellerController.set_notification_seen)
+
+
+// router.post('/set-notification-seen', notificationController.set_notification_seen)
+
 
 module.exports = router;
