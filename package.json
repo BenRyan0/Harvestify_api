@@ -8,7 +8,8 @@
   },
   "scripts": {
     "server": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "push": "git add --all && git commit -m \"changesMade(RUSH-NO-Description) -dev0\" && git push origin main"
   },
   "keywords": [],
   "author": "",

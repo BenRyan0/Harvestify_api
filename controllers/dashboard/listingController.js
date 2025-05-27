@@ -31,27 +31,6 @@ class listingController {
     return null; // Return null for unsupported units
   };
 
-  // calculateTotalPrice = (pricePerUnit, yieldAmount, priceUnit, yieldUnit) => {
-  //   const priceUnitGroup = this.getUnitGroup(priceUnit);
-  //   const yieldUnitGroup = this.getUnitGroup(yieldUnit);
-
-  //   // If the unit groups don't match, throw an error
-  //   if (priceUnitGroup !== yieldUnitGroup || priceUnitGroup === null) {
-  //     throw new Error("Incompatible units: Price unit and yield unit do not match.");
-  //   }
-
-  //   // Convert units if necessary
-  //   const priceUnitMultiplier = this.unitConversionMap[priceUnit] || 1; // Default multiplier 1 if not found
-  //   const yieldUnitMultiplier = this.unitConversionMap[yieldUnit] || 1; // Default multiplier 1 if not found
-
-  //   // Calculate the adjusted price and yield
-  //   const adjustedPrice = pricePerUnit / priceUnitMultiplier;
-  //   const adjustedYield = yieldAmount * yieldUnitMultiplier;
-
-  //   // Calculate the total price
-  //   const totalPrice = adjustedPrice * adjustedYield;
-  //   return totalPrice;
-  // };
 
 
   calculateTotalPrice = (pricePerUnit, yieldAmount, priceUnit, yieldUnit) => {
@@ -677,7 +656,9 @@ class listingController {
         discount,
         mapsLink,
         pricePerUnit,
-        additionalFeatures, // Extract additionalFeatures field
+        additionalFeatures,
+        commodity,
+        commodityId  // Extract additionalFeatures field
       } = fields;
 
       const { images } = files;
@@ -686,6 +667,10 @@ class listingController {
       if (!images || !Array.isArray(images)) {
         return responseReturn(res, 400, { error: "A minimum of 2 images is required" });
       }
+      if (!commodityId) {
+        return responseReturn(res, 400, { error: "Commodity ID is required." });
+      }
+
     
       sellerDelivery = sellerDelivery === "true";
       traderPickup = traderPickup === "true";
@@ -787,7 +772,10 @@ class listingController {
         additionalLocationInfo,
         discount,
         mapsLink,
-        additionalFeatures, // Include additionalFeatures
+        additionalFeatures, 
+        commodity,// Include additionalFeatures
+        commodityId,    
+
       });
 
       // Response

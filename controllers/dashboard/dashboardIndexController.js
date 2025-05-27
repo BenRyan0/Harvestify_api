@@ -3,6 +3,7 @@ const customerOrder = require('../../models/traderDeal')
 // const sellerWallet = require('../../models/sellerWallet')
 // const myShopWallet = require('../../models/myShopWallet')
 const sellerModel = require('../../models/sellerModel')
+const Seller = require('../../models/sellerModel')
 const traderDeal = require('../../models/traderDeal')
 
 const adminSellerMessage = require('../../models/chat/adminSellerMessage')
@@ -12,218 +13,12 @@ const productModel = require('../../models/listingModel')
 const { mongo: { ObjectId } } = require('mongoose')
 const { responseReturn } = require('../../utils/response')
 const listingModel = require('../../models/listingModel')
+const Transaction = require('../../models/Transaction/Transaction')
 const categoryModel = require('../../models/categoryModel')
 const mongoose = require('mongoose');
+const traderModel = require('../../models/traderModel')
 
 
-// module.exports.get_seller_dashboard_data = async (req, res) => {
-//   console.log(req.body);
-//   const { id } = req.params;
-
-//   try {
-//     const totalProduct = await productModel
-//       .find({
-//         sellerId: new ObjectId(id),
-//       })
-//       .countDocuments();
-
-//     const totalOrder = await authorOrder
-//       .find({
-//         sellerId: new ObjectId(id),
-//       })
-//       .countDocuments();
-
-//     const totalPendingOrder = await authorOrder
-//       .find({
-//         $and: [
-//           {
-//             sellerId: {
-//               $eq: new ObjectId(id),
-//             },
-//           },
-//           {
-//             delivery_status: {
-//               $eq: 'pending',
-//             },
-//           },
-//         ],
-//       })
-//       .countDocuments();
-
-//     const messages = await sellerCustomerMessage.aggregate([
-//       {
-//         $match: {
-//           $or: [
-//             { senderId: id },
-//             { receiverId: id },
-//           ],
-//         },
-//       },
-//       {
-//         $sort: { createdAt: -1 }, // Sort messages by most recent first
-//       },
-//       {
-//         $group: {
-//           _id: "$senderId", // Group by senderId
-//           latestMessage: { $first: "$$ROOT" }, // Get the most recent message per sender
-//         },
-//       },
-//       {
-//         $limit: 3, // Limit to 3 latest senders
-//       },
-//     ]);
-
-//     // Extract the actual message documents
-//     let formattedMessages = messages.map((group) => group.latestMessage);
-
-//     // Reverse the order to get the oldest message first
-//     formattedMessages = formattedMessages;
-
-//     const recentOrders = await authorOrder
-//       .find({
-//         sellerId: new ObjectId(id),
-//       })
-//       // .limit(5);
-
-//     // Calculate the sum of all authordeals price with shipPickUpStatus "confirmed"
-//     const totalSales = await authorOrder.aggregate([
-//       {
-//         $match: {
-//           sellerId: new ObjectId(id),
-//           shipPickUpStatus: 'completed',
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: null,
-//           totalSales: { $sum: '$price' },
-//         },
-//       },
-//     ]);
-
-//     const totalSalesValue = totalSales.length > 0 ? totalSales[0].totalSales : 0;
-
-//     // Add monthly data for the chart
-//     const monthlyData = await authorOrder.aggregate([
-//       {
-//         $match: {
-//           sellerId: new ObjectId(id), // Match orders for the specific seller
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" } },
-//           offers: { $sum: 1 }, // Count all offers (all deals)
-//           successfulDeals: {
-//             $sum: {
-//               $cond: [
-//                 { $and: [{ $eq: ["$shipPickUpStatus", "completed"] }, { $eq: ["$paymentStatus", "completed"] }] },
-//                 1,
-//                 0,
-//               ],
-//             },
-//           },
-//           revenue: { $sum: "$price" }, // Sum revenue
-//         },
-//       },
-//       {
-//         $sort: { "_id.month": 1 }, // Sort by month
-//       },
-//     ]);
-    
-//     // Fill in missing months with zeros
-//     const completeMonthlyData = Array.from({ length: 12 }, (_, i) => {
-//       const month = i + 1;
-//       const data = monthlyData.find((d) => d._id.month === month) || { offers: 0, successfulDeals: 0, revenue: 0 };
-//       return { ...data, month };
-//     });
-    
-//     // Chart Data Preparation
-//     const chartData = {
-//       series: [
-//         {
-//           name: "Offers",
-//           data: completeMonthlyData.map((data) => data.offers),
-//         },
-//         {
-//           name: "Successful Deals",
-//           data: completeMonthlyData.map((data) => data.successfulDeals),
-//         },
-//         {
-//           name: "Revenue",
-//           data: completeMonthlyData.map((data) => data.revenue),
-//         },
-//       ],
-//     };
-    
-//     const successfulDealsWithListings = await authorOrder.aggregate([
-//       {
-//         $match: {
-//           sellerId: new ObjectId(id),
-//           shipPickUpStatus: 'completed',
-//           paymentStatus: 'completed',
-//         },
-//       },
-//       {
-//         $unwind: "$listing_", // Unwind the listings inside the authorDeal
-//       },
-//       {
-//         $lookup: {
-//           from: "listings", // Lookup the Listing collection
-//           localField: "listing_",
-//           foreignField: "_id",
-//           as: "listingDetails",
-//         },
-//       },
-//       {
-//         $unwind: "$listingDetails", // Unwind the array of listing details
-//       },
-//       {
-//         $match: {
-//           "listingDetails.category": { $exists: true, $ne: null }, // Ensure the category exists in the listing
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: { month: { $month: "$createdAt" }, category: "$listingDetails.category" }, // Group by month and category
-//           count: { $sum: 1 }, // Count the total number of listings in each category
-//         },
-//       },
-//       {
-//         $sort: { "_id.month": 1, count: -1 }, // Sort by month and count in descending order
-//       },
-//     ]);
-    
-//     // Prepare the second chart data
-//     const secondChartData = successfulDealsWithListings.map((data) => ({
-//       name: data._id.category,
-//       data: Array.from({ length: 12 }, (_, i) => {
-//         const month = i + 1;
-//         const categoryData = successfulDealsWithListings.find((d) => d._id.category === data._id.category && d._id.month === month);
-//         return categoryData ? categoryData.count : 0;
-//       }),
-//     }));
-    
-//     console.log("Second Chart Data (Listings with Categories):", secondChartData);
-    
-
-//     // Response return with added secondChartData
-//     responseReturn(res, 200, {
-//       totalOrder,
-//       totalPendingOrder,
-//       messages: formattedMessages,
-//       recentOrders,
-//       totalProduct,
-//       totalSales: totalSalesValue,
-//       chartData,
-//       secondChartData
-//     })
-//   } catch (error) {
-//     console.log('get seller dashboard data error ' + error.message);
-//   }
-// };
-
-// const { ObjectId } = require('mongoose').Types;
 
 module.exports.get_seller_dashboard_data = async (req, res) => {
   console.log(req.body);
@@ -309,6 +104,17 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
               $cond: [{ $eq: ["$shipPickUpStatus", "pre-canceled"] }, 1, 0],
             },
           },
+
+          CancelledOrders: { 
+            $sum: { 
+              $cond: [{ $eq: ["$shipPickUpStatus", "Cancelled"] }, 1, 0] 
+            } 
+          },
+          inDisputeOrders: { 
+            $sum: { 
+              $cond: [{ $eq: ["$shipPickUpStatus", "In-dispute"] }, 1, 0] 
+            } 
+          },
         },
       },
       { $sort: { "_id.month": 1 } },
@@ -317,7 +123,7 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
     const completeMonthlyData = Array.from({ length: 12 }, (_, i) => {
       const month = i + 1;
       const data = monthlyData.find((d) => d._id.month === month) || {
-        offers: 0, successfulDeals: 0, revenue: 0, preCancelled: 0,
+        offers: 0, successfulDeals: 0, revenue: 0, preCancelled: 0,CancelledOrders : 0,inDisputeOrders: 0
       };
       return { ...data, month };
     });
@@ -327,7 +133,9 @@ module.exports.get_seller_dashboard_data = async (req, res) => {
         { name: "Offers", data: completeMonthlyData.map((data) => data.offers) },
         { name: "Successful Deals", data: completeMonthlyData.map((data) => data.successfulDeals) },
         { name: "Revenue", data: completeMonthlyData.map((data) => data.revenue) },
+        { name: "Cancelled Orders", data: completeMonthlyData.map((data) => data.CancelledOrders) },
         { name: "Pre-Cancelled Orders", data: completeMonthlyData.map((data) => data.preCancelled) },
+        { name: "In-Dispute Orders", data: completeMonthlyData.map((data) => data.inDisputeOrders) },
       ],
     };
 
@@ -371,6 +179,7 @@ module.exports.get_admin_dashboard_data = async (req, res) => {
       .countDocuments();
 
       const totalSeller = await sellerModel.find({status: "active"}).countDocuments()
+      const sellers = await Seller.find({ role: "seller" }).select("-password"); 
 
 
     // Get messages for all sellers
@@ -557,77 +366,6 @@ module.exports.get_admin_dashboard_data = async (req, res) => {
 
 
 
-// module.exports.get_admin_dashboard_category_price_fluctuations = async (req, res) => {
-//   console.log(req.query);
-//   try {
-//     const { unit } = req.query;
-//     console.log("UNIT --------------------------")
-//     console.log(unit)
-
-//     if (!unit) return res.status(400).json({ error: "Unit is required" });
-
-//     // Aggregate price trends per category and per day
-//     const categoryData = await listingModel.aggregate([
-//       { $match: { unit } }, // Filter by unit
-//       {
-//         $group: {
-//           _id: {
-//             category: "$category",
-//             date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, // Group by day
-//           },
-//           avgPrice: { $avg: "$price" },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.category",
-//           priceTrends: {
-//             $push: { date: "$_id.date", avgPrice: "$avgPrice" },
-//           },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           category: "$_id",
-//           priceTrends: 1,
-//         },
-//       },
-//     ]);
-
-//     // Extract unique dates as labels
-//     const allDates = new Set();
-//     categoryData.forEach(({ priceTrends }) => {
-//       priceTrends.forEach(({ date }) => allDates.add(date));
-//     });
-
-//     const sortedLabels = Array.from(allDates).sort(); // Sorted dates (X-axis)
-
-//     // Format dataset
-//     const datasets = categoryData.map(({ category, priceTrends }) => {
-//       // Create a dictionary to map date → price
-//       const priceMap = Object.fromEntries(priceTrends.map(({ date, avgPrice }) => [date, avgPrice]));
-
-//       // Populate data for each date (default to null if missing)
-//       const data = sortedLabels.map((date) => priceMap[date] || null);
-
-//       return {
-//         label: category,
-//         data,
-//       };
-//     });
-
-//     res.json({
-//       labels: sortedLabels, // X-axis labels (dates)
-//       datasets,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
-
-
 
 module.exports.get_admin_dashboard_category_price_fluctuations = async (req, res) => {
   console.log(req.query);
@@ -719,6 +457,111 @@ module.exports.get_admin_dashboard_category_price_fluctuations = async (req, res
   }
 };
 
+module.exports.get_admin_dashboard_commodity_price_fluctuations = async (req, res) => {
+  console.log(req.query);
+  try {
+    const { unit } = req.query;
+    const year = req.query.year ? parseInt(req.query.year, 10) : 2025;
+
+    console.log("UNIT --------------------------", unit);
+    console.log("YEAR --------------------------", year);
+
+    if (!unit) return res.status(400).json({ error: "Unit is required" });
+    if (!year) return res.status(400).json({ error: "Year is required" });
+
+    const yearInt = parseInt(year, 10);
+    if (isNaN(yearInt)) return res.status(400).json({ error: "Invalid year format" });
+
+    // Aggregate price trends per commodity grouped by month
+   const commodityData = await listingModel.aggregate([
+  { 
+    $match: { 
+      unit, 
+      createdAt: { 
+        $gte: new Date(`${yearInt}-01-01T00:00:00.000Z`), 
+        $lt: new Date(`${yearInt + 1}-01-01T00:00:00.000Z`)
+      }
+    } 
+  },
+  {
+    $addFields: {
+      commodity: {
+        $let: {
+          vars: {
+            comm: { $ifNull: ["$commodity", "no commodity"] }
+          },
+          in: {
+            $cond: [
+              { $eq: ["$$comm", ""] },
+              "no commodity assigned",
+              "$$comm"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        commodity: "$commodity",
+        month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+      },
+      avgPrice: { $avg: "$price" },
+    },
+  },
+  {
+    $group: {
+      _id: "$_id.commodity",
+      priceTrends: {
+        $push: { month: "$_id.month", avgPrice: "$avgPrice" },
+      },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      commodity: "$_id",
+      priceTrends: 1,
+    },
+  },
+]);
+
+
+    const labels = [
+      "January", "February", "March", "April", "May", "June", "July",
+      "August", "September", "October", "November", "December"
+    ];
+
+    const getMonthIndex = (dateString) => parseInt(dateString.split("-")[1], 10) - 1;
+
+    const datasets = commodityData.map(({ commodity, priceTrends }) => {
+      const priceMap = Object.fromEntries(
+        priceTrends.map(({ month, avgPrice }) => [getMonthIndex(month), avgPrice])
+      );
+
+      const data = labels.map((_, index) => priceMap[index] || null);
+
+      return {
+        label: commodity,
+        data,
+        borderColor: `hsl(${Math.random() * 360}, 70%, 50%)`,
+        backgroundColor: `hsla(${Math.random() * 360}, 70%, 50%, 0.5)`,
+      };
+    });
+
+    res.json({
+      labels,
+      datasets,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
+
 module.exports.get_admin_dashboard_category_yield_fluctuations = async (req, res) => {
   console.log(req.query);
   try {
@@ -805,87 +648,106 @@ module.exports.get_admin_dashboard_category_yield_fluctuations = async (req, res
   }
 };
 
+module.exports.get_admin_dashboard_commodity_yield_fluctuations = async (req, res) => {
+  console.log(req.query);
+  try {
+    const { yieldUnit, year } = req.query;
 
-// module.exports.get_admin_dashboard_category_yield_fluctuations = async (req, res) => {
-//   console.log(req.query);
-//   try {
-//     const { yieldUnit } = req.query;
+    if (!yieldUnit) return res.status(400).json({ error: "Yield Unit is required" });
+    if (!year) return res.status(400).json({ error: "Year is required" });
 
-//     if (!yieldUnit) return res.status(400).json({ error: "Yield Unit is required" });
+    // Convert the year into a date range
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
 
-//     // Aggregate expectedHarvestYield per category, grouped by month
-//     const categoryData = await listingModel.aggregate([
-//       {
-//         $match: {
-//           yieldUnit,
-//           expectedHarvestYield: { $exists: true, $ne: null }, // Ensure valid values
-//           createdAt: { $exists: true } // Ensure createdAt exists
-//         }
-//       },
-//       {
-//         $group: {
-//           _id: {
-//             category: "$category",
-//             month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } } // Extract YYYY-MM
-//           },
-//           avgExpectedHarvestYield: { $avg: "$expectedHarvestYield" }
-//         }
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.category",
-//           monthlyData: {
-//             $push: {
-//               month: "$_id.month",
-//               avgExpectedHarvestYield: "$avgExpectedHarvestYield"
-//             }
-//           }
-//         }
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           category: "$_id",
-//           monthlyData: 1
-//         }
-//       }
-//     ]);
+    // Aggregate expectedHarvestYield per commodity, grouped by month
+    const commodityData = await listingModel.aggregate([
+      {
+        $match: {
+          yieldUnit,
+          expectedHarvestYield: { $exists: true, $ne: null },
+          createdAt: { $exists: true, $gte: startDate, $lte: endDate }
+        }
+      },
+      // Replace missing/null/empty commodity with "uncategorized"
+      {
+        $addFields: {
+          commodity: {
+            $let: {
+              vars: {
+                comm: { $ifNull: ["$commodity", "no commodity"] }
+              },
+              in: {
+                $cond: [
+                  { $eq: ["$$comm", ""] },
+                  "no commodity",
+                  "$$comm"
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            commodity: "$commodity",
+            month: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
+          },
+          avgExpectedHarvestYield: { $avg: "$expectedHarvestYield" }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.commodity",
+          monthlyData: {
+            $push: {
+              month: "$_id.month",
+              avgExpectedHarvestYield: "$avgExpectedHarvestYield"
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          commodity: "$_id",
+          monthlyData: 1
+        }
+      }
+    ]);
 
-//     // Define fixed labels for months
-//     const labels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
-//     // Map MongoDB months (YYYY-MM) to numerical months
-//     const getMonthIndex = (dateString) => {
-//       const month = parseInt(dateString.split("-")[1], 10);
-//       return month - 1; // Convert to zero-based index
-//     };
+    const labels = [
+      "January", "February", "March", "April", "May", "June", "July",
+      "August", "September", "October", "November", "December"
+    ];
 
-//     // Format dataset for Chart.js
-//     const datasets = categoryData.map(({ category, monthlyData }) => {
-//       const yieldMap = Object.fromEntries(
-//         monthlyData.map(({ month, avgExpectedHarvestYield }) => [getMonthIndex(month), avgExpectedHarvestYield])
-//       );
+    const getMonthIndex = (dateString) => parseInt(dateString.split("-")[1], 10) - 1;
 
-//       // Populate data array with values for each month, defaulting to null if missing
-//       const data = labels.map((_, index) => yieldMap[index] || null);
+    const datasets = commodityData.map(({ commodity, monthlyData }) => {
+      const yieldMap = Object.fromEntries(
+        monthlyData.map(({ month, avgExpectedHarvestYield }) => [getMonthIndex(month), avgExpectedHarvestYield])
+      );
 
-//       return {
-//         label: category,
-//         data,
-//         borderColor: `hsl(${Math.random() * 360}, 70%, 50%)`, // Generate random color
-//         backgroundColor: `hsla(${Math.random() * 360}, 70%, 50%, 0.5)`,
-//       };
-//     });
+      const data = labels.map((_, index) => yieldMap[index] || null);
 
-//     res.json({
-//       labels, // Months as X-axis labels
-//       datasets // Data for each category
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
+      return {
+        label: commodity,
+        data,
+        borderColor: `hsl(${Math.random() * 360}, 70%, 50%)`,
+        backgroundColor: `hsla(${Math.random() * 360}, 70%, 50%, 0.5)`,
+      };
+    });
+
+    res.json({
+      labels,
+      datasets
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 module.exports.get_seller_dashboard_category_price_fluctuations = async (req, res) => {
   console.log(req.body);
@@ -964,143 +826,83 @@ module.exports.get_seller_dashboard_category_price_fluctuations = async (req, re
 };
 
 
-// module.exports.get_seller_dashboard_category_price_fluctuations = async (req, res) => {
-//   console.log(req.body);
-//   try {
-//     const { unit, sellerId } = req.body;
 
-//     if (!unit) return res.status(400).json({ error: "Unit is required" });
-//     if (!sellerId) return res.status(400).json({ error: "Seller ID is required" });
 
-//     const seller = await sellerModel.findById(sellerId)
-//     console.log(seller)
+module.exports.getSellerPopularityRate = async (req, res) => {
+  console.log(req.body);
+  try {
+    const popularityData = await Transaction.aggregate([
+      {
+        $match: {
+          status: "Completed",
+          $or: [
+            { dispute: { $exists: false } },
+            { dispute: null },
+            { dispute: "" },
+            { dispute: { $size: 0 } } // If dispute is an array
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: "$seller",
+          uniqueBuyers: { $addToSet: "$trader" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          buyerCount: { $size: "$uniqueBuyers" },
+        },
+      },
+      {
+        $lookup: {
+          from: "sellers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "sellerInfo",
+        },
+      },
+      { $unwind: "$sellerInfo" },
+      {
+        $project: {
+          fullName: {
+            $concat: [
+              "$sellerInfo.firstName", " ",
+              "$sellerInfo.middleName", " ",
+              "$sellerInfo.lastName"
+            ]
+          },
+          profileImage: "$sellerInfo.profileImage",
+          buyerCount: 1,
+        },
+      },
+      { $sort: { buyerCount: -1 } }
+    ]);
 
-//     // Aggregate price trends per category and per day for a specific seller
-//     const categoryData = await listingModel.aggregate([
-//       { $match: { unit, sellerId } }, // Filter by unit and sellerId
-//       {
-//         $group: {
-//           _id: {
-//             category: "$category",
-//             date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, // Group by day
-//           },
-//           avgPrice: { $avg: "$price" },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.category",
-//           priceTrends: {
-//             $push: { date: "$_id.date", avgPrice: "$avgPrice" },
-//           },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           category: "$_id",
-//           priceTrends: 1,
-//         },
-//       },
-//     ]);
+    // Structure the response to match a chart/graph format
+    const labels = popularityData.map(item => item.fullName);
+    const data = popularityData.map(item => item.buyerCount);
+    const profileImages = popularityData.map(item => item.profileImage);
 
-//     // Extract unique dates as labels
-//     const allDates = new Set();
-//     categoryData.forEach(({ priceTrends }) => {
-//       priceTrends.forEach(({ date }) => allDates.add(date));
-//     });
+      const totalSellers = await sellerModel.find({status: "active"}).countDocuments()
+      const totalTraders = await traderModel.find({ status: "active" }).select("-password"); 
 
-//     const sortedLabels = Array.from(allDates).sort(); // Sorted dates (X-axis)
-
-//     // Format dataset
-//     const datasets = categoryData.map(({ category, priceTrends }) => {
-//       // Create a dictionary to map date → price
-//       const priceMap = Object.fromEntries(priceTrends.map(({ date, avgPrice }) => [date, avgPrice]));
-
-//       // Populate data for each date (default to null if missing)
-//       const data = sortedLabels.map((date) => priceMap[date] || null);
-
-//       return {
-//         label: category,
-//         data,
-//       };
-//     });
-
-//     res.json({
-//       labels: sortedLabels, // X-axis labels (dates)
-//       datasets,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
-
-// module.exports.get_admin_dashboard_category_price_fluctuations = async (req, res) => {
-//   console.log(req.body);
-//   try {
-//     const { unit } = req.body;
-
-//     if (!unit) return res.status(400).json({ error: "Unit is required" });
-
-//     // Aggregate price trends per category and per day
-//     const categoryData = await listingModel.aggregate([
-//       { $match: { unit } }, // Filter by unit
-//       {
-//         $group: {
-//           _id: {
-//             category: "$category",
-//             date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, // Group by day
-//           },
-//           avgPrice: { $avg: "$price" },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.category",
-//           priceTrends: {
-//             $push: { date: "$_id.date", avgPrice: "$avgPrice" },
-//           },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           category: "$_id",
-//           priceTrends: 1,
-//         },
-//       },
-//     ]);
-
-//     // Extract unique dates as labels
-//     const allDates = new Set();
-//     categoryData.forEach(({ priceTrends }) => {
-//       priceTrends.forEach(({ date }) => allDates.add(date));
-//     });
-
-//     const sortedLabels = Array.from(allDates).sort(); // Sorted dates (X-axis)
-
-//     // Format dataset
-//     const datasets = categoryData.map(({ category, priceTrends }) => {
-//       // Create a dictionary to map date → price
-//       const priceMap = Object.fromEntries(priceTrends.map(({ date, avgPrice }) => [date, avgPrice]));
-
-//       // Populate data for each date (default to null if missing)
-//       const data = sortedLabels.map((date) => priceMap[date] || null);
-
-//       return {
-//         label: category,
-//         data,
-//       };
-//     });
-
-//     res.json({
-//       labels: sortedLabels, // X-axis labels (dates)
-//       datasets,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
+    res.json({
+      totalSellers,
+      totalTraders,
+      labels, // seller names
+      profileImages, // array of profileImage URLs/paths (if needed for display)
+      datasets: [
+        {
+          label: "Number of Buyers",
+          data,
+        },
+      ],
+    });
+  } catch (error) {
+    console.error("Error fetching seller popularity rate:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 

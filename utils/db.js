@@ -7,7 +7,7 @@ module.exports.dbConnect = async () => {
       await mongoose.connect(process.env.DB_URL, {});
       console.log("production database connected ...");
    }else{
-    await mongoose.connect(process.env.DB_URL, {});
+    await mongoose.connect(process.env.DB_LOCAL, {});
     console.log("local database connected ...");
    }
   } catch (error) {

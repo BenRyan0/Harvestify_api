@@ -715,6 +715,7 @@ setup2FA = async (req, res) => {
 
     // Find seller using the authenticated user ID
     const seller = await sellerModel.findById(req.id);
+    console.log(seller)
     if (!seller) {
       return responseReturn(res, 404, { error: "Seller not found" });
     }
@@ -734,9 +735,11 @@ setup2FA = async (req, res) => {
     seller.isMfaActive = true;
     await seller.save();
 
+    let name = seller.firstName + " " +seller.lastName
+
     const url = speakeasy.otpauthURL({
       secret: secret.base32,
-      label: seller.name,
+      label: name,
       issuer: "harvestify.com",
       encoding: "base32"
     });
@@ -823,6 +826,7 @@ reset2FA = async (req, res) => {
 
     // Update seller's `twoFactorSecret`
     seller.twoFactorSecret = "";
+    seller.qrCode = "";
     seller.isMfaActive = false;
     await seller.save();
 

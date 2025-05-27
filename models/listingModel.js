@@ -56,6 +56,15 @@ const listingSchema = new Schema(
       type: String,
       required: true,
     },
+    commodity: {
+      type: String,
+      required: true,
+    },
+      commodityId: {
+      type: Schema.Types.ObjectId,
+      ref: "commodities",
+      required: true,
+    },
     description: {
       type: String,
       required: true,

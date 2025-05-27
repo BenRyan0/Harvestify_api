@@ -8,6 +8,12 @@ router.post("/category-add", authMiddleware, categoryController.add_category);
 router.get("/category-get", authMiddleware, categoryController.get_category);
 
 
+
+router.post("/commodity-add", authMiddleware, categoryController.add_commodity);
+router.get("/commodity-get", authMiddleware, categoryController.get_commodity);
+// router.delete("/-remove/:id", authMiddleware, categoryController.delete_category);
+
+
 router.delete("/category-remove/:id", authMiddleware, categoryController.delete_category);
 router.delete("/feature-remove/:id", authMiddleware, categoryController.deleteAdditionalFeature);
 

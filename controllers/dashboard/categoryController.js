@@ -1,4 +1,5 @@
 const categoryModel = require("../../models/categoryModel");
+const commodityModel = require("../../models/commodityModel");
 const additionalFeatureModel = require("../../models/additionalFeatureModel");
 const { responseReturn } = require("../../utils/response");
 const cloudinary = require("cloudinary").v2;
@@ -30,6 +31,111 @@ class categoryController {
   };
 
 
+  add_commodity = async (req, res) => {
+    const form = new formidable.IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        return responseReturn(res, 404, { error: "Form parsing error" });
+      } else {
+        console.log("Form parsed successfully");
+        let { name, category,durationUnit, durationValue} = fields;
+        console.log(fields)
+        console.log("fields")
+        // let { image } = files;
+        if (!name || !category || !durationUnit || !durationValue) {
+          console.log("asdadsasd")
+          return responseReturn(res, 400, {
+            error: "All fields are required",
+          });
+        }
+
+        name = name.trim();
+        const slug = name.split(" ").join("-");
+  
+        // Check if the category already exists
+        const existingCommodity = await commodityModel.findOne({ name, category });
+
+        if (existingCommodity) {
+          console.log("Asdasd")
+          return responseReturn(res, 409, {
+            error: "Commodity with this name already exists in this category",
+          });
+        }
+
+        try {
+            const commodity = await commodityModel.create({
+              name,
+              slug,
+              category,
+              durationUnit, 
+              durationValue
+            });
+            return responseReturn(res, 201, {
+              commodity,
+              message: "Commodity added successfully",
+            });
+          
+        } catch (error) {
+          console.error("Error Here", error);
+          return responseReturn(res, 500, { error: "Internal server error" });
+        }
+      }
+    });
+  };
+
+  get_commodity = async (req, res) => {
+    const { page, searchValue, parPage } = req.query;
+
+    try {
+      let skipPage = "";
+      if (parPage && page) {
+        skipPage = parseInt(parPage) * (parseInt(page) - 1);
+      }
+      if (searchValue && page && parPage) {
+        const commodities = await commodityModel
+          .find({
+            $text: { $search: searchValue },
+          })
+          .skip(skipPage)
+          .limit(parPage)
+          
+          .sort({ createdAt: -1 });
+
+
+        const totalCommodities = await commodityModel
+          .find({
+            $text: { $search: searchValue },
+          })
+          .countDocuments();
+
+
+        responseReturn(res, 200, { totalCommodities, commodities });
+      } else if (searchValue === "" && page && parPage) {
+        const commodities = await commodityModel
+          .find({})
+          .skip(skipPage)
+          .limit(parPage)
+          .sort({ createdAt: -1 });
+
+
+
+        const totalCommodities = await commodityModel.find({}).countDocuments();
+
+        responseReturn(res, 200, { totalCommodities, commodities });
+      } else {
+        const commodities = await commodityModel.find({}).sort({ createdAt: -1 });
+        const totalCommodities = await commodityModel.find({}).countDocuments();
+        responseReturn(res, 200, { totalCommodities, commodities });
+      }
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+
+
+
+  // TAC RECO - commodity 
 
 
   add_category = async (req, res) => {

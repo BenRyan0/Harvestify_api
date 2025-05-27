@@ -26,4 +26,13 @@ router.delete('/trader/traderDeal-delete/:traderDealId',transactionController.de
 router.put('/transactions/:id/deposit',transactionController.updateDepositPayment)
 
 
+router.get('/transactions/:transactionId',transactionController.getTransactionById)
+
+
+router.post('/submit-seller-dispute',transactionController.submitSellerDispute)
+router.post('/cancel-transaction',transactionController.submitSellerDispute)
+
+
+
+
 module.exports = router;

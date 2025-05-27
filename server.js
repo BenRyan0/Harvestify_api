@@ -11,6 +11,7 @@ const socket = require('socket.io');
 const { userInfo } = require("os");
 const cron = require("node-cron");
 const generateHarvestNotifications = require("./utils/generateHarvestNotifications");
+const getTraderCancellationRate = require("./utils/getTraderCancellationRate");
 const Speakeasy =require("speakeasy")
 
 const session = require("express-session")
@@ -187,9 +188,22 @@ app.get("/trigger-notifications", async (req, res) => {
     console.log("Manually triggering harvest notifications...");
     await generateHarvestNotifications();
     res.status(200).json({ message: "Harvest notifications triggered successfully!" });
+   
   } catch (error) {
     console.error("Error triggering notifications:", error);
     res.status(500).json({ error: "Failed to trigger notifications" });
+  }
+});
+app.get("/trader-cancellation", async (req, res) => {
+  try {
+    console.log("Manually triggering Trader Cancellation rate calculation...");
+    await getTraderCancellationRate();
+    res.status(200).json({ message: "Trader Cancellation rate calculation triggered successfully!" });
+  } catch (error) {
+    console.error("Error triggering Trader Cancellation rate calculation:", error);
+
+    res.status(500).json({ error: "Failed to trigger Trader Cancellation rate calculation" });
+
   }
 });
 
@@ -214,6 +228,7 @@ app.use('/api', require('./routes/dashboard/voucherRoutes'));
 app.use('/api', require('./routes/dashboard/listingRoute'));
 
 app.use('/api', require('./routes/transaction/transactionRoutes'));
+app.use('/api', require('./routes/home/transactionTrader'));
 
 
 app.post('/totp-secret', (request, response, next)=>{
@@ -236,9 +251,14 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-cron.schedule("0 0 * * *", () => {
+cron.schedule("59 11 * * *", () => {
   console.log("Running daily harvest notification check...");
   generateHarvestNotifications();
+});
+
+cron.schedule("0 0 * * *", () => {
+  console.log("Running daily harvest cancellation rate...");
+  getTraderCancellationRate();
 });
 
 

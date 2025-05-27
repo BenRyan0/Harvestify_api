@@ -18,6 +18,12 @@ router.get('/trader/get-reviews/:listingId/:sellerId', homeControllers.get_revie
 
 router.get('/get-all-sellers', homeControllers.get_all_Sellers)
 router.get('/get-cluster-details/:clusterId', homeControllers.get_cluster_details)
+
+
+
+
+router.get('/get-seller-loss-listings/:sellerId', homeControllers.get_seller_loss)
+// router.get('/get-seller-loss-listings/:sellerId/:startYear/:endYear', homeControllers.get_seller_loss)
 // /home/get-cluster-details/${clusterId}
 
 module.exports = router;

@@ -13,7 +13,6 @@ const transactionSchema = new mongoose.Schema({
   traderDeal: { type: mongoose.Schema.Types.ObjectId, ref: "traderDeals", required: true },
   totalAmount: { type: Number, required: true },
   paymentTerm: { type: Number, required: true },
-
   deposit : {
     depositPaymentAmount: { type: Number },
     depositPaymentAmountProofUrl: { type: String },
@@ -83,6 +82,17 @@ const transactionSchema = new mongoose.Schema({
     },
   },
   reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' },
+  dispute: [
+    {
+      issue: { type: String, enum: ["Deposit Not Received", "Final Payment Not Received", "Item Not Received"], required: true },
+      // raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true }, // Either seller or trader
+      status: { type: String, enum: ["Pending", "In-Dispute", "Resolved"], default: "Pending" },
+      proofUrl: { type: String }, // Proof from dispute initiator
+      createdAt: { type: Date, default: Date.now },
+      reason: { type: String },
+    }
+  ],
+
 
   buyerStep: { type: Number },
   sellerStep: { type: Number },

@@ -1,5 +1,6 @@
 const authorModel = require('../../models/authDeal');
 const traderDeal = require('../../models/traderDeal');
+const traderModel = require('../../models/traderModel');
 const cardModel = require('../../models/cardModel');
 const listingModel = require('../../models/listingModel');
 const voucherModel = require('../../models/voucher');
@@ -95,6 +96,10 @@ class dealController {
             voucher,
             paymentTerm
         } = req.body;
+
+        console.log("req.body")
+        console.log(req.body)
+        console.log("req.body")
     
         const normalizedListing = Array.isArray(listing) ? listing : [listing];
         const tempDate = moment(Date.now()).format('LLL');
@@ -163,11 +168,10 @@ class dealController {
             });
     
             await order.save(); // This triggers the `pre('save')` middleware in the traderDeal schema
-    //         console.log("NGIIIIIIII")
-    // console.log(traderDealListing[0].sellerId)
-    // console.log(":::--------------->>>")
-    // console.log(traderDealListing)
-            // Prepare author deal data
+            console.log("traderDealListing 01")
+console.log(traderDealListing)
+console.log("traderDealListing")
+            
             authorDealData.push({
                 dealId: order.id,
                 sellerId: traderDealListing[0].sellerId,
@@ -204,7 +208,8 @@ class dealController {
                 orderId: order.id,
             });
         } catch (error) {
-            console.error(error.message);
+            console.error(error);
+            console.error("error");
             responseReturn(res, 500, {
                 message: "An error occurred while placing the order",
                 error: error.message,
@@ -426,91 +431,350 @@ class dealController {
     }
 
 
+    // get_seller_orders = async (req, res) => {
+    //     const { sellerId } = req.params;
+    //     let { page, parPage, searchValue } = req.query;
+    //     page = parseInt(page);
+    //     parPage = parseInt(parPage);
+    
+    //     const skipPage = parPage * (page - 1);
+    
+    //     try {
+    //         if (searchValue) {
+    //             // Implement search logic here if needed
+    //         } else {
+    //             // Find all orders for the given sellerId and populate the listing_
+    //             const orders = await authorModel.find({ sellerId })
+    //                 .skip(skipPage)
+    //                 .limit(parPage)
+    //                 .sort({ createdAt: -1 })
+    //                 .populate({
+    //                     path: 'listing_', // Reference to the Listing model
+    //                     select: 'name price unit expectedHarvestYield yieldUnit locationInfo totalPrice harvestEndDate  harvestStartDate isAvailable' // Select fields you want from Listing
+    //                 });
+    
+    //             // Debugging: Log the orders to verify the structure
+    //             console.log('Fetched Orders:', orders);
+    
+    //             // Group orders by listing._id (assuming it's always one listing per order)
+    //             const groupedOrders = orders.reduce((acc, order) => {
+    //                 // Check if listing_ array is populated and contains one item
+    //                 if (order.listing_ && order.listing_.length > 0 && order.listing_[0]._id) {
+    //                     const listingId = order.listing_[0]._id.toString(); // Get the listing ID from the first item in the array
+    
+    //                     // Log the listing ID and order to check structure
+    //                     console.log('Listing ID:', listingId);
+    //                     console.log('Order:', order);
+    
+    //                     if (!acc[listingId]) {
+    //                         acc[listingId] = {
+    //                             listing: order.listing_[0],  // The Listing object (first element)
+    //                             orders: []                  // Orders for this specific listing
+    //                         };
+    //                     }
+    //                     acc[listingId].orders.push(order); // Add order to the corresponding listing
+    //                 } else {
+    //                     // Handle case where listing_ array is not populated or empty
+    //                     console.log('Order has no populated listing_:', order);
+    //                 }
+    //                 return acc;
+    //             }, {});
+    
+    //             // Convert the grouped orders into an array of listings with their associated orders
+    //             const result = Object.values(groupedOrders);
+    
+    //             // Debugging: Log the grouped results
+    //             console.log('Grouped Orders:', result);
+    
+    //             // Get total number of orders for pagination
+    //             const totalOrder = await authorModel.countDocuments({ sellerId });
+    
+    //             responseReturn(res, 200, { orders: result, totalOrder });
+    //         }
+    //     } catch (error) {
+    //         console.log('get seller order error ' + error.message);
+    //         responseReturn(res, 500, { message: 'internal server error' });
+    //     }
+    // };
+    
+    
+    // get_seller_orders = async (req, res) => {
+    //     const { sellerId } = req.params;
+    //     let { page, parPage, searchValue } = req.query;
+        
+    //     // Ensure page and parPage are valid numbers
+    //     page = parseInt(page) || 1;
+    //     parPage = parseInt(parPage) || 10;
+    //     const skipPage = parPage * (page - 1);
+    
+    //     try {
+    //         let query = { sellerId };
+    
+    //         if (searchValue) {
+    //             // Example: Searching within the populated listing name
+    //             query["listing_.name"] = { $regex: searchValue, $options: "i" };
+    //         }
+    
+    //         // Fetch orders with pagination, sorting, and populating listings + trader
+    //         const orders = await authorModel.find(query)
+    //             .skip(skipPage)
+    //             .limit(parPage)
+    //             .sort({ createdAt: -1 })
+    //             .populate({
+    //                 path: 'listing_',
+    //                 select: 'name price unit expectedHarvestYield yieldUnit locationInfo totalPrice harvestEndDate harvestStartDate isAvailable'
+    //             })
+    //             .populate({
+    //                 path: 'sellerId', // Populate trader (seller)
+    //                 model: 'traders', // Ensure this matches the model name in Mongoose
+    //                 select: 'firstName lastName email phoneNumber profileImage associationName', // Choose trader details to return
+    //             });
+    
+    //         console.log('Fetched Orders:', orders);
+    
+    //         // Group orders by listing ID
+    //         const groupedOrders = orders.reduce((acc, order) => {
+    //             if (order.listing_ && order.listing_.length > 0) {
+    //                 order.listing_.forEach(listing => {
+    //                     const listingId = listing._id.toString();
+    
+    //                     if (!acc[listingId]) {
+    //                         acc[listingId] = {
+    //                             listing: listing,
+    //                             orders: [],
+    //                             trader: order.sellerId // Add trader details
+    //                         };
+    //                     }
+    //                     acc[listingId].orders.push(order);
+    //                 });
+    //             } else {
+    //                 console.log('Order has no populated listing_:', order);
+    //             }
+    //             return acc;
+    //         }, {});
+    
+    //         const result = Object.values(groupedOrders);
+    //         console.log('Grouped Orders with Trader:', result);
+    
+    //         // Get the total number of orders that match the query
+    //         const totalOrder = await authorModel.countDocuments(query);
+    
+    //         responseReturn(res, 200, { orders: result, totalOrder });
+    //     } catch (error) {
+    //         console.error(`Error fetching orders for sellerId: ${sellerId}, Page: ${page}, ParPage: ${parPage}. Error: ${error.message}`);
+    //         responseReturn(res, 500, { message: 'Internal server error' });
+    //     }
+    // };
+    
+
+    // get_seller_orders = async (req, res) => {
+    //     const { sellerId } = req.params;
+    //     let { page, parPage, searchValue } = req.query;
+    
+    //     // Ensure page and parPage are valid numbers
+    //     page = parseInt(page) || 1;
+    //     parPage = parseInt(parPage) || 10;
+    //     const skipPage = parPage * (page - 1);
+    
+    //     try {
+    //         let query = { sellerId };
+    
+    //         if (searchValue) {
+    //             query["listing_.name"] = { $regex: searchValue, $options: "i" };
+    //         }
+    
+    //         // Fetch orders with pagination, sorting, and populating listings
+    //         const orders = await authorModel.find(query)
+    //             .skip(skipPage)
+    //             .limit(parPage)
+    //             .sort({ createdAt: -1 })
+    //             .populate({
+    //                 path: 'listing_',
+    //                 select: 'name price unit expectedHarvestYield yieldUnit locationInfo totalPrice harvestEndDate harvestStartDate isAvailable'
+    //             });
+    
+    //         console.log('Fetched Orders:', orders);
+    
+    //         // Extract trader IDs from orders
+    //         const traderIds = [...new Set(orders.map(order => order.shippingInfo?.id).filter(Boolean))];
+    
+    //         // Fetch trader details
+    //         const traders = await traderModel.find({ _id: { $in: traderIds } })
+    //             .select('firstName lastName email phoneNumber profileImage associationName');
+    
+    //         // Convert traders array into a lookup object for quick access
+    //         const traderLookup = traders.reduce((acc, trader) => {
+    //             acc[trader._id.toString()] = trader;
+    //             return acc;
+    //         }, {});
+    
+    //         // Group orders by listing ID and attach trader details
+    //         const groupedOrders = orders.reduce((acc, order) => {
+    //             if (order.listing_ && order.listing_.length > 0) {
+    //                 order.listing_.forEach(listing => {
+    //                     const listingId = listing._id.toString();
+    //                     const traderId = order.shippingInfo?.id?.toString();
+    //                     const trader = traderLookup[traderId] || null;
+    
+    //                     if (!acc[listingId]) {
+    //                         acc[listingId] = {
+    //                             listing: listing,
+    //                             orders: [],
+    //                             trader: trader  // Attach trader info
+    //                         };
+    //                     }
+    //                     acc[listingId].orders.push(order);
+    //                 });
+    //             } else {
+    //                 console.log('Order has no populated listing_:', order);
+    //             }
+    //             return acc;
+    //         }, {});
+    
+    //         const result = Object.values(groupedOrders);
+    //         console.log('Grouped Orders with Trader:', result);
+    
+    //         // Get the total number of orders that match the query
+    //         const totalOrder = await authorModel.countDocuments(query);
+    
+    //         responseReturn(res, 200, { orders: result, totalOrder });
+    //     } catch (error) {
+    //         console.error(`Error fetching orders for sellerId: ${sellerId}, Page: ${page}, ParPage: ${parPage}. Error: ${error.message}`);
+    //         responseReturn(res, 500, { message: 'Internal server error' });
+    //     }
+    // };
+    
+
     get_seller_orders = async (req, res) => {
         const { sellerId } = req.params;
         let { page, parPage, searchValue } = req.query;
-        page = parseInt(page);
-        parPage = parseInt(parPage);
     
+        // Ensure page and parPage are valid numbers
+        page = parseInt(page) || 1;
+        parPage = parseInt(parPage) || 10;
         const skipPage = parPage * (page - 1);
     
         try {
+            let query = { sellerId };
+    
             if (searchValue) {
-                // Implement search logic here if needed
-            } else {
-                // Find all orders for the given sellerId and populate the listing_
-                const orders = await authorModel.find({ sellerId })
-                    .skip(skipPage)
-                    .limit(parPage)
-                    .sort({ createdAt: -1 })
-                    .populate({
-                        path: 'listing_', // Reference to the Listing model
-                        select: 'name price unit expectedHarvestYield yieldUnit locationInfo totalPrice harvestEndDate  harvestStartDate isAvailable' // Select fields you want from Listing
-                    });
+                query["listing_.name"] = { $regex: searchValue, $options: "i" };
+            }
     
-                // Debugging: Log the orders to verify the structure
-                console.log('Fetched Orders:', orders);
+            // Fetch orders with pagination, sorting, and populating listings
+            const orders = await authorModel.find(query)
+                .skip(skipPage)
+                .limit(parPage)
+                .sort({ createdAt: -1 })
+                .populate({
+                    path: 'listing_',
+                    select: 'name price unit expectedHarvestYield yieldUnit locationInfo totalPrice harvestEndDate harvestStartDate isAvailable'
+                });
     
-                // Group orders by listing._id (assuming it's always one listing per order)
-                const groupedOrders = orders.reduce((acc, order) => {
-                    // Check if listing_ array is populated and contains one item
-                    if (order.listing_ && order.listing_.length > 0 && order.listing_[0]._id) {
-                        const listingId = order.listing_[0]._id.toString(); // Get the listing ID from the first item in the array
+            console.log('Fetched Orders:', orders);
     
-                        // Log the listing ID and order to check structure
-                        console.log('Listing ID:', listingId);
-                        console.log('Order:', order);
+            // Extract unique trader IDs from orders
+            const traderIds = [...new Set(orders.map(order => order.shippingInfo?.id).filter(Boolean))];
+    
+            // Fetch trader details
+            const traders = await traderModel.find({ _id: { $in: traderIds } })
+                .select('cancellationRate');
+    
+            // Convert traders array into a lookup object
+            const traderLookup = traders.reduce((acc, trader) => {
+                acc[trader._id.toString()] = trader;
+                return acc;
+            }, {});
+    
+            // Attach trader details to each order
+            const ordersWithTraders = orders.map(order => ({
+                ...order.toObject(),
+                trader: traderLookup[order.shippingInfo?.id?.toString()] || null // Attach trader if found
+            }));
+    
+            // Group orders by listing ID
+            const groupedOrders = ordersWithTraders.reduce((acc, order) => {
+                if (order.listing_ && order.listing_.length > 0) {
+                    order.listing_.forEach(listing => {
+                        const listingId = listing._id.toString();
     
                         if (!acc[listingId]) {
                             acc[listingId] = {
-                                listing: order.listing_[0],  // The Listing object (first element)
-                                orders: []                  // Orders for this specific listing
+                                listing: listing,
+                                orders: []
                             };
                         }
-                        acc[listingId].orders.push(order); // Add order to the corresponding listing
-                    } else {
-                        // Handle case where listing_ array is not populated or empty
-                        console.log('Order has no populated listing_:', order);
-                    }
-                    return acc;
-                }, {});
+                        acc[listingId].orders.push(order);
+                    });
+                } else {
+                    console.log('Order has no populated listing_:', order);
+                }
+                return acc;
+            }, {});
     
-                // Convert the grouped orders into an array of listings with their associated orders
-                const result = Object.values(groupedOrders);
+            const result = Object.values(groupedOrders);
+            console.log('Grouped Orders with Trader in Orders:', result);
     
-                // Debugging: Log the grouped results
-                console.log('Grouped Orders:', result);
+            // Get the total number of orders
+            const totalOrder = await authorModel.countDocuments(query);
     
-                // Get total number of orders for pagination
-                const totalOrder = await authorModel.countDocuments({ sellerId });
-    
-                responseReturn(res, 200, { orders: result, totalOrder });
-            }
+            responseReturn(res, 200, { orders: result, totalOrder });
         } catch (error) {
-            console.log('get seller order error ' + error.message);
-            responseReturn(res, 500, { message: 'internal server error' });
+            console.error(`Error fetching orders: ${error.message}`);
+            responseReturn(res, 500, { message: 'Internal server error' });
         }
     };
     
-    
-    
-    
-    
-
     get_seller_order = async (req, res) => {
-
-        const { orderId } = req.params
-        let dealId = orderId
-
+        const { orderId } = req.params;
+        let dealId = orderId;
+    
         try {
-            const order = await authorModel.findById(dealId)
-            console.log(order)
-
-            responseReturn(res, 200, { order })
+            // Fetch the order
+            const order = await authorModel.findById(dealId);
+    
+            if (!order) {
+                return responseReturn(res, 404, { message: "Order not found" });
+            }
+    
+            console.log("Fetched Order:", order);
+    
+            // Extract the trader ID from shippingInfo
+            const traderId = order.shippingInfo?.id;
+    
+            let trader = null;
+            if (traderId) {
+                trader = await traderModel.findById(traderId).select("firstName lastName email phoneNumber profileImage associationName cancellationRate");
+            }
+    
+            // Attach trader details to order response
+            const orderWithTrader = {
+                ...order.toObject(),
+                trader: trader || null // Attach trader if found, otherwise null
+            };
+    
+            responseReturn(res, 200, { order: orderWithTrader });
         } catch (error) {
-            console.log('get admin order ' + error.message)
+            console.error("Error fetching seller order:", error.message);
+            responseReturn(res, 500, { message: "Internal server error" });
         }
-    }
+    };
+    
+
+    // get_seller_order = async (req, res) => {
+
+    //     const { orderId } = req.params
+    //     let dealId = orderId
+
+    //     try {
+    //         const order = await authorModel.findById(dealId)
+    //         console.log(order)
+
+    //         responseReturn(res, 200, { order })
+    //     } catch (error) {
+    //         console.log('get admin order ' + error.message)
+    //     }
+    // }
 
 
 
