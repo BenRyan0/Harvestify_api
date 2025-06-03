@@ -9,17 +9,28 @@ const transactionSchema = new mongoose.Schema({
 },
   listingId: { type: mongoose.Schema.Types.ObjectId, ref: 'listings', required: true },
   shippingInfo: { type: Object, required: true },
-  deal: { type: mongoose.Schema.Types.ObjectId, ref: "authorDeal", required: true },
+  deal: { type: mongoose.Schema.Types.ObjectId, ref: "authorDeals", required: true },
   traderDeal: { type: mongoose.Schema.Types.ObjectId, ref: "traderDeals", required: true },
   totalAmount: { type: Number, required: true },
   paymentTerm: { type: Number, required: true },
-  deposit : {
-    depositPaymentAmount: { type: Number },
-    depositPaymentAmountProofUrl: { type: String },
-    depositPaymentAmountProofMessage: { type: String },
-    depositPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
-    date: { type: Date, default: Date.now }
+deposit : {
+  depositPaymentAmount: { type: Number },
+  depositPaymentAmountProofUrl: { type: String },
+  depositPaymentAmountProofMessage: { type: String },
+  depositPaymentCompleted: {
+    type: String,
+    enum: ["Completed", "In-dispute", "Resolved", "Pending","Resolved-continue"],
+    default: "Pending",
+    required: true
   },
+  resubmittedProofs: [{
+    proofUrl: { type: String },
+    message: { type: String },
+    date: { type: Date, default: Date.now }
+  }],
+  date: { type: Date, default: Date.now }
+},
+
   midwayPayment :{
     midwayPaymentAmount: { type: Number },
     midwayPaymentAmountProofUrl: { type: String },
@@ -82,18 +93,57 @@ const transactionSchema = new mongoose.Schema({
     },
   },
   reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' },
-  dispute: [
-    {
-      issue: { type: String, enum: ["Deposit Not Received", "Final Payment Not Received", "Item Not Received"], required: true },
-      // raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true }, // Either seller or trader
-      status: { type: String, enum: ["Pending", "In-Dispute", "Resolved"], default: "Pending" },
-      proofUrl: { type: String }, // Proof from dispute initiator
-      createdAt: { type: Date, default: Date.now },
-      reason: { type: String },
+dispute: [
+  {
+    issue: {
+      type: String,
+      enum: [
+        "Deposit Not Received",
+        "Final Payment Not Received",
+        "Item Not Received",
+        "Admin Review"
+      ],
+      required: true
+    },
+    status: {
+      type: String,
+      enum: [
+        "Pending",
+        "In-Dispute",
+        "Resolved",
+        "Resolved-continue",
+        "Escalated-to-Admin"
+      ],
+      default: "Pending"
+    },
+    proofUrl: {
+      type: [String] // Changed from Array to [String] for clarity
+    },
+    reason: { type: String },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+
+    // 🔽 Admin-related fields
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: null
+    },
+    adminDecision: {
+      type: String,
+      enum: [
+        "Accepted Trader Proof",
+        "Accepted Seller Claim",
+        "Requested More Info",
+        "Cancelled Transaction",
+        "Flagged as Dispute"
+      ],
+      default: null
     }
-  ],
-
-
+  }
+],
   buyerStep: { type: Number },
   sellerStep: { type: Number },
   totalSteps: { type: Number },

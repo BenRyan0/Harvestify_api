@@ -1,5 +1,6 @@
 const authorModel = require('../../models/authDeal');
 const traderDeal = require('../../models/traderDeal');
+const TraderDeal = require('../../models/traderDeal');
 const traderModel = require('../../models/traderModel');
 const sellerModel = require('../../models/sellerModel');
 const cardModel = require('../../models/cardModel');
@@ -28,24 +29,48 @@ const mongoose = require("mongoose");
 
 
 class transactionController {
-   resizeImage = async (imagePath) => {
-      const outputDir = path.join(__dirname, "../../uploads");
-      const outputFilePath = path.join(
-        outputDir,
-        "resized_" + path.basename(imagePath)
-      );
+  //  resizeImage = async (imagePath) => {
+  //     const outputDir = path.join(__dirname, "../../uploads");
+  //     const outputFilePath = path.join(
+  //       outputDir,
+  //       "resized_" + path.basename(imagePath)
+  //     );
   
-      // Ensure the output directory exists
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
+  //     // Ensure the output directory exists
+  //     if (!fs.existsSync(outputDir)) {
+  //       fs.mkdirSync(outputDir, { recursive: true });
+  //     }
   
-      await sharp(imagePath)
-        .resize(800, 800) // Adjust the width and height as needed
-        .toFile(outputFilePath);
-      return outputFilePath;
-    };
+  //     await sharp(imagePath)
+  //       .resize(1000, 1000) // Adjust the width and height as needed
+  //       .toFile(outputFilePath);
+  //     return outputFilePath;
+  //   };
   
+
+  resizeImage = async (imagePath) => {
+  const outputDir = path.join(__dirname, "../../uploads");
+  const outputFilePath = path.join(
+    outputDir,
+    "resized_" + path.basename(imagePath)
+  );
+
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  await sharp(imagePath)
+    .resize({
+      width: 1000,
+      height: 1000,
+      fit: 'inside', // Maintain aspect ratio, no cropping
+      withoutEnlargement: true // Prevent upscaling if image is smaller
+    })
+    .toFile(outputFilePath);
+
+  return outputFilePath;
+};
+
 
 
     createTransaction = async (req, res) => {
@@ -100,8 +125,6 @@ class transactionController {
             // res.status(500).json({ success: false, error: error.message });
           }
         }
-
-
 
 proof_submit = async (req, res) => {
     const form = new formidable.IncomingForm();
@@ -191,9 +214,6 @@ proof_submit = async (req, res) => {
         }
     });
 };
-
-
-
 Trader_Cancellation_Rate = async (req, res) => {
   console.log("CANCELLATION RATE")
   try {
@@ -244,7 +264,6 @@ Trader_Cancellation_Rate = async (req, res) => {
   }
     
 };
-
     getTransactionByDealId = async (req, res) => {
         console.log("Fetching transactions for dealId...");
         try {
@@ -488,9 +507,6 @@ Trader_Cancellation_Rate = async (req, res) => {
     }
 };
 
-
-
-
 delivery_handoff_proof_submit = async (req, res) => {
   const form = new formidable.IncomingForm();
 
@@ -597,8 +613,6 @@ delivery_handoff_proof_submit = async (req, res) => {
       }
   });
 };
-
-
 
 trader_handoff_confirm = async (req, res) => {
   console.log("TAE");
@@ -833,8 +847,6 @@ deleteTraderDeal = async (req, res) => {
   }
 };
 
-
-
   updateDepositPayment = async (req, res) => {
     try {
       let { depositPaymentAmount } = req.body;
@@ -879,71 +891,6 @@ deleteTraderDeal = async (req, res) => {
   };
   
 
-//   submitSellerDispute = async (req, res) => {
-//     const form = new formidable.IncomingForm();
-
-//     form.parse(req, async (err, fields, files) => {
-//         if (err) {
-//             return res.status(400).json({ error: "Error parsing form data" });
-//         }
-
-//         const { transactionId, reason, details, issue } = fields;
-//         const image = files.image; // Directly accessing files.image
-
-//         console.log("Fields:", fields);
-//         console.log("Issue:", issue);
-
-//         // Validate required fields
-//         if (!transactionId || !reason || !issue) {
-//             return res.status(400).json({
-//                 error: "Transaction ID, reason, and issue are required fields.",
-//             });
-//         }
-
-//         try {
-//             // Check if transaction exists
-//             const transaction = await Transaction.findById(transactionId);
-//             if (!transaction) {
-//                 return res.status(404).json({ error: "Transaction not found" });
-//             }
-
-//             let imageUrl = "";
-
-//             // If an image is provided, upload it to Cloudinary
-//             if (image) {
-//                 const imagePath = image.filepath || image.path; // Compatibility check
-//                 const uploadResult = await cloudinary.uploader.upload(imagePath, {
-//                     folder: "DisputeProofs",
-//                 });
-
-//                 imageUrl = uploadResult.secure_url;
-//                 fs.unlinkSync(imagePath); // Remove local file after upload
-//             }
-
-//             // Update transaction with dispute details
-//             transaction.disputes = {
-//                     reason,
-//                     details,
-//                     imageUrl,
-//                     issue,
-//                     status: "Pending", // Mark as pending for review
-//                     createdAt: new Date(),
-      
-//             };
-//             await transaction.save();
-
-//             return res.status(201).json({
-//                 message: "Dispute submitted successfully.",
-//                 dispute: transaction.disputes.sellerDispute, // Fixed path
-//             });
-//         } catch (error) {
-//             console.error("Error submitting dispute:", error);
-//             return res.status(500).json({ error: "Internal server error" });
-//         }
-//     });
-// };
-
-
 getTransactionById = async (req, res) => {
   try {
       const { transactionId } = req.params;
@@ -977,147 +924,89 @@ getTransactionById = async (req, res) => {
 };
 
 
-// submitSellerDispute = async (req, res) => {
-//   const form = new formidable.IncomingForm();
-
-//   form.parse(req, async (err, fields, files) => {
-//       if (err) {
-//           return res.status(400).json({ error: "Error parsing form data" });
-//       }
-
-//       const { transactionId, reason, details, issue } = fields;
-//       const image = files.image; // Directly accessing files.image
-
-//       console.log("Fields:", fields);
-//       console.log("Issue:", issue);
-
-//       // Validate required fields
-//       if (!transactionId || !reason || !issue) {
-//           return res.status(400).json({
-//               error: "Transaction ID, reason, and issue are required fields.",
-//           });
-//       }
-
-//       try {
-//           // Check if transaction exists
-//           const transaction = await Transaction.findById(transactionId);
-//           if (!transaction) {
-//               return res.status(404).json({ error: "Transaction not found" });
-//           }
-
-//           // Check if a dispute already exists
-//           if (transaction.dispute.issue) {
-//               return res.status(400).json({ error: "A dispute has already been submitted for this transaction." });
-//           }
-
-//           let imageUrl = "";
-
-//           // If an image is provided, upload it to Cloudinary
-//           if (image) {
-//               const imagePath = image.filepath || image.path; // Compatibility check
-//               const uploadResult = await cloudinary.uploader.upload(imagePath, {
-//                   folder: "DisputeProofs",
-//               });
-
-//               imageUrl = uploadResult.secure_url;
-//               fs.unlinkSync(imagePath); // Remove local file after upload
-//           }
-
-//           // Add dispute details only if it doesn't exist
-//           transaction.dispute = {
-//               reason,
-//               details,
-//               imageUrl,
-//               issue,
-//               status: "Pending", // Mark as pending for review
-//               createdAt: new Date(),
-//           };
-
-//           await transaction.save();
-
-//           return res.status(201).json({
-//               message: "Dispute submitted successfully.",
-//               transaction: transaction,
-//           });
-//       } catch (error) {
-//           console.error("Error submitting dispute:", error);
-//           return res.status(500).json({ error: "Internal server error" });
-//       }
-//   })
-// }
 submitSellerDispute = async (req, res) => {
-  const form = new formidable.IncomingForm();
+  const form = new formidable.IncomingForm({ multiples: true });
 
   form.parse(req, async (err, fields, files) => {
-      if (err) {
-          return res.status(400).json({ error: "Error parsing form data" });
+    if (err) {
+      console.error("Form parse error:", err);
+      return res.status(400).json({ error: "Error parsing form data" });
+    }
+
+    const { transactionId, reason, details = "", issue } = fields;
+    const { images } = files;
+
+    const imageArray = Array.isArray(images) ? images : images ? [images] : [];
+
+    if (!transactionId || !reason || !issue) {
+      return res.status(400).json({ error: "Transaction ID, reason, and issue are required." });
+    }
+
+    if (imageArray.length < 2) {
+      return res.status(400).json({ error: "At least 2 images are required." });
+    }
+
+    try {
+      cloudinary.config({
+        cloud_name: process.env.cloud_name,
+        api_key: process.env.api_key,
+        api_secret: process.env.api_secret,
+        secure: true,
+      });
+
+      // Upload all images and wait for them
+      const uploadPromises = imageArray.map(async (img) => {
+        const resizedPath = await this.resizeImage(img.filepath);
+        const result = await cloudinary.uploader.upload(resizedPath, { folder: "listings" });
+        fs.unlinkSync(resizedPath); // cleanup
+        return result.secure_url;
+      });
+
+      const allImageUrls = await Promise.all(uploadPromises); // Wait here
+
+      if (allImageUrls.length === 0) {
+        return res.status(500).json({ error: "Image upload failed." });
       }
 
-      const { transactionId, reason, details, issue } = fields;
-      const image = files.image; // Directly accessing files.image
-
-      console.log("Fields:", fields);
-      console.log("Issue:", issue);
-
-      console.log(fields)
-      // Validate required fields
-      if (!transactionId || !reason || !issue) {
-          return res.status(400).json({
-              error: "Transaction ID, reason, and issue are required fields.",
-          });
+      const transaction = await Transaction.findById(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ error: "Transaction not found." });
       }
 
-      try {
-          // Check if transaction exists
-          const transaction = await Transaction.findById(transactionId);
-          if (!transaction) {
-              return res.status(404).json({ error: "Transaction not found" });
-          }
-
-          // Check if a dispute already exists
-          if (transaction.dispute.reason) {
-              return res.status(400).json({
-                  error: "A dispute has already been submitted for this transaction.",
-              });
-          }
-
-          let imageUrl = "";
-
-          // If an image is provided, upload it to Cloudinary
-          if (image) {
-              const imagePath = image.filepath || image.path; // Compatibility check
-              const uploadResult = await cloudinary.uploader.upload(imagePath, {
-                  folder: "DisputeProofs",
-              });
-
-              imageUrl = uploadResult.secure_url;
-              fs.unlinkSync(imagePath); // Remove local file after upload
-          }
-
-          // Add dispute only if it doesn't exist
-          transaction.dispute = {
-              reason,
-              details,
-              imageUrl,
-              issue,
-              status: "Pending", // Mark as pending for review
-              createdAt: new Date(),
-          };
-
-          await transaction.save();
-
-          return res.status(201).json({
-              message: "Dispute submitted successfully.",
-              dispute: transaction.dispute,
-          });
-      } catch (error) {
-          console.error("Error submitting dispute:", error);
-          return res.status(500).json({ error: "Internal server error" });
+      if (transaction.dispute?.reason) {
+        return res.status(400).json({ error: "A dispute has already been submitted." });
       }
+
+
+      console.log(allImageUrls)
+      console.log("allImageUrls")
+
+      transaction.dispute = {
+        reason,
+        details,
+       proofUrl: allImageUrls,
+        issue,
+        status: "In-Dispute",
+        createdAt: new Date(),
+      };
+
+      await transaction.save();
+
+      return res.status(201).json({
+        message: "Dispute submitted successfully.",
+        dispute: transaction.dispute,
+      });
+    } catch (error) {
+      console.error("Dispute submission error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
   });
 };
 
+
+
 setDepositStatusCancelled = async (req, res) => {
+ 
   try {
     console.log(req.body);
     const { transactionId } = req.body; // Transaction ID passed in the body of the request
@@ -1166,6 +1055,413 @@ setDepositStatusCancelled = async (req, res) => {
     responseReturn(res, 500, {
       error: error.message,
     });
+  }
+};
+
+  cancelTransactionByTrader = async (req, res) => {
+  const { transactionId, traderId } = req.params;
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found.' });
+    }
+
+    if (transaction.trader.toString() !== traderId.toString()) {
+      return res.status(403).json({ message: 'Only the assigned trader can cancel this transaction.' });
+    }
+
+    const activeDispute = transaction.dispute.find(d =>
+      d.status === 'Pending' || d.status === 'In-Dispute'
+    );
+
+    if (!activeDispute) {
+      return res.status(400).json({ message: 'No active dispute found. Cannot cancel due to dispute.' });
+    }
+
+    if (transaction.status === 'Cancelled by Trader' || transaction.status === 'Cancelled due to Dispute by Trader') {
+      return res.status(400).json({ message: 'Transaction already cancelled.' });
+    }
+
+    // Step 1: Update dispute and transaction
+    activeDispute.status = 'Resolved';
+    transaction.status = 'Cancelled';
+
+    // Step 2: Also update the related traderDeal (e.g., mark it as cancelled)
+    const traderDeal = await TraderDeal.findById(transaction.traderDeal);
+    const listing = await listingModel.findById(transaction.listingId);
+    const deal = await authorModel.findById(transaction.deal);
+
+    if (traderDeal) {
+      traderDeal.paymentStatus = 'Cancelled';
+      traderDeal.shipPickUpStatus = 'Cancelled';
+      traderDeal.cancelNote = 'Cancelled due to dispute'; // You can add this field to the schema if you want
+      await traderDeal.save();
+    }
+    if (listing) {
+       listing.isAvailable = true;
+      await listing.save();
+    }
+    if (deal) {
+       deal.shipPickUpStatus = "Cancelled";
+       deal.paymentStatus = "Cancelled";
+      await deal.save();
+    }
+
+    // Save transaction after updates
+    await transaction.save();
+
+    return res.status(200).json({
+      message: 'Transaction and trader deal updated successfully due to dispute.',
+      transaction
+    });
+
+  } catch (error) {
+    console.error('Error during trader dispute cancellation:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+  undoCancelTransactionByTrader = async (req, res) => {
+  const { transactionId, traderId } = req.query;
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found.' });
+    }
+
+    if (transaction.trader.toString() !== traderId.toString()) {
+      return res.status(403).json({ message: 'Only the assigned trader can undo this cancellation.' });
+    }
+
+    if (transaction.status !== 'Cancelled due to Dispute by Trader') {
+      return res.status(400).json({ message: 'This transaction was not cancelled due to a dispute.' });
+    }
+
+    // Find the resolved dispute that was previously set
+    const resolvedDispute = transaction.dispute.find(d => d.status === 'Resolved');
+
+    if (!resolvedDispute) {
+      return res.status(400).json({ message: 'No resolved dispute found to restore.' });
+    }
+
+    // Restore dispute status to "In-Dispute"
+    resolvedDispute.status = 'In-Dispute';
+
+    // Restore transaction status (you might need to track the previous one elsewhere — assuming "Ongoing" here)
+    transaction.status = 'Ongoing';
+
+    await transaction.save();
+
+    return res.status(200).json({
+      message: 'Transaction cancellation undone. Dispute reopened.',
+      transaction
+    });
+
+  } catch (error) {
+    console.error('Error during undoing cancellation:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+resendDepositProof = async (req, res) => {
+  console.log("RESEND")
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      return res.status(400).json({ error: 'Form parsing error' });
+    }
+
+    const { transactionId, message } = fields;
+    const { image } = files;
+    console.log(files)
+    console.log(fields)
+    console.log("asdadasdasd")
+
+    if (!transactionId || !image || !message) {
+      return res.status(400).json({ error: 'Please include an image proof and message' });
+    }
+
+    // Cloudinary config
+    cloudinary.config({
+      cloud_name: process.env.cloud_name,
+      api_key: process.env.api_key,
+      api_secret: process.env.api_secret,
+      secure: true,
+    });
+
+    try {
+      // Upload to Cloudinary
+      const filePath = image.filepath || image.path;
+      const uploadResult = await cloudinary.uploader.upload(filePath, {
+        folder: 'resubmitted_proofs',
+      });
+
+      // Optional: remove the local file
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+      // Update transaction: push to deposit.resubmittedProofs
+     const updatedTransaction = await Transaction.findOneAndUpdate(
+        { _id: transactionId },
+        {
+          $push: {
+            'deposit.resubmittedProofs': {
+              proofUrl: uploadResult.secure_url,
+              message,
+              date: new Date(),
+            },
+          },
+          // $inc: {
+          //   buyerStep: 1, // Increment buyer step
+          // },
+        },
+        { new: true }
+      );
+
+
+      if (!updatedTransaction) {
+        return res.status(404).json({ error: 'Transaction not found' });
+      }
+
+      return res.status(200).json({
+        message: 'Deposit proof resent successfully',
+        updatedTransaction,
+      });
+    } catch (error) {
+      console.error('Error in resendDepositProof:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+};
+confirmDepositReceived = async (req, res) => {
+  const { transactionId } = req.params;
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found." });
+    }
+
+    // Mark the deposit as completed
+    transaction.deposit.depositPaymentCompleted = 'Completed';
+    transaction.deposit.date = new Date();
+
+    // Explicitly set step numbers
+    transaction.buyerStep = 3;  // e.g., Step 4: Deposit Confirmed
+    transaction.sellerStep = 3; // e.g., Step 3: Waiting for Full Payment
+
+    // Resolve any related deposit dispute
+    const depositDispute = transaction.dispute.find(
+      d => d.issue === "Deposit Not Received" && d.status !== "Resolved-continue"
+    );
+
+    if (depositDispute) {
+      depositDispute.status = "Resolved-continue";
+    }
+
+      // Update the depositStatus to "Confirmed"
+      transaction.depositStatus = "Confirmed";
+
+      // Optionally, you can update the buyer and seller steps based on your workflow
+      transaction.buyerStep = 3; // Example step: 4 - Deposit Confirmed
+      transaction.sellerStep = 3; // Example step: 3 - Waiting for Full Payment
+
+      // Save the updated transaction
+
+    await transaction.save();
+
+    return res.status(200).json({
+      message: "Deposit confirmed, steps updated, and dispute resolved.",
+      transaction
+    });
+  } catch (error) {
+    console.error("Error confirming deposit received:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+rejectDepositProofAfterResend = async (req, res) => {
+  console.log("asdasdasd")
+  const { transactionId } = req.params;
+  const { reason } = req.body;
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found." });
+    }
+
+    // Create or update dispute with escalation flag
+    const existingDispute = transaction.dispute.find(
+      d => d.issue === "Deposit Not Received" && d.status !== "Resolved-continue"
+    );
+
+    if (existingDispute) {
+      existingDispute.status = "Escalated-to-Admin";
+      existingDispute.updatedAt = new Date();
+      existingDispute.notes = reason || "Seller still claims no deposit received after second proof.";
+    } else {
+      transaction.dispute.push({
+        issue: "Deposit Not Received",
+        status: "Escalated-to-Admin",
+        notes: reason || "Seller still claims no deposit received after second proof.",
+        createdAt: new Date()
+      });
+    }
+
+    // Set transaction to waiting state
+    transaction.status = "Admin Review";
+    transaction.sellerStep = 2;
+    transaction.buyerStep = 2;
+
+    await transaction.save();
+
+    return res.status(200).json({
+      message: "Deposit proof rejected. Dispute escalated to admin.",
+      transaction
+    });
+  } catch (error) {
+    console.error("Error rejecting deposit proof:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+getAllEscalatedTransactionsWithDetails = async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ status: "Admin Review" })
+      .populate("listingId")
+      .populate("deal")
+      .populate("trader")
+      .populate("traderDeal")
+      .populate("seller");
+
+    if (!transactions || transactions.length === 0) {
+      return res.status(404).json({ message: "No transactions escalated to admin." });
+    }
+
+    return res.status(200).json({
+      message: "Escalated transactions retrieved successfully.",
+      transactions,
+    });
+  } catch (error) {
+    console.error("Error fetching escalated transactions:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+acceptTraderProof = async (req, res) => {
+  try {
+    const { transactionId } = req.query;
+console.log(transactionId)
+console.log("transactionId")
+    const transaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      {
+        $set: {
+          status: 'Completed',
+          'dispute.resolvedBy': 'admin',
+          'dispute.adminDecision': 'Accepted Trader Proof',
+        },
+        $push: {
+          history: {
+            action: 'Accepted Trader Proof',
+            by: 'admin',
+            date: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+
+    res.json({ success: true, message: 'Trader proof accepted', transaction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error resolving dispute', error });
+  }
+};
+
+adminResolveDispute = async (req, res) => {
+  const { transactionId } = req.params;
+  const { action, adminId } = req.body; // 'accept', 'reject', 'cancel'
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction) return res.status(404).json({ message: 'Transaction not found.' });
+
+    const dispute = transaction.dispute.find(d =>
+      d.status === 'Pending' || d.status === 'In-Dispute' || d.status === 'Escalated-to-Admin'
+    );
+
+    if (!dispute) return res.status(400).json({ message: 'No active dispute found.' });
+
+    let message = '';
+
+    switch (action) {
+      case 'accept':
+        dispute.status = 'Resolved';
+        dispute.adminDecision = 'Accepted Seller Claim';
+        dispute.resolvedBy = adminId;
+        transaction.status = 'Resolved in favor of Seller';
+        message = 'Seller claim accepted.';
+        break;
+
+      case 'reject':
+        dispute.status = 'Resolved';
+        dispute.adminDecision = 'Accepted Trader Proof';
+        dispute.resolvedBy = adminId;
+        transaction.status = 'Resolved in favor of Trader';
+         transaction.buyerStep = 3;
+         transaction.sellerStep=3;
+        message = 'Trader proof accepted.';
+        break;
+
+      case 'cancel':
+        dispute.status = 'Resolved';
+        dispute.adminDecision = 'Cancelled Transaction';
+        dispute.resolvedBy = adminId;
+        transaction.status = 'Cancelled by Admin';
+
+        const traderDeal = await TraderDeal.findById(transaction.traderDeal);
+        const listing = await listingModel.findById(transaction.listingId);
+        const deal = await authorModel.findById(transaction.deal);
+
+        if (traderDeal) {
+          traderDeal.paymentStatus = 'Cancelled by Admin';
+          traderDeal.shipPickUpStatus = 'Cancelled by Admin';
+          traderDeal.cancelNote = 'Cancelled by Admin due to dispute';
+          await traderDeal.save();
+        }
+
+        if (listing) {
+          listing.isAvailable = true;
+          await listing.save();
+        }
+
+        if (deal) {
+          deal.shipPickUpStatus = 'Cancelled by Admin';
+          deal.paymentStatus = 'Cancelled by Admin';
+          await deal.save();
+        }
+
+        message = 'Transaction and related entities cancelled by admin.';
+        break;
+
+      default:
+        return res.status(400).json({ message: 'Invalid action type.' });
+    }
+
+    await transaction.save();
+    return res.status(200).json({ message, transaction });
+
+  } catch (err) {
+    console.error('Admin resolution error:', err);
+    res.status(500).json({ message: 'Server error.' });
   }
 };
 

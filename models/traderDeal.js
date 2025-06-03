@@ -30,6 +30,9 @@ const traderDeal = new Schema({
         type: String,
         required: true
     },
+   cancelNote: {
+        type: String,
+    },
     date: {
         type: String,
         required: true

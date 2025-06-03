@@ -1,81 +1,196 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
-  traderId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
-  }, // Buyer (trader)
-
-  sellerId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
-  }, // Seller
-
-  listingId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Listing", 
-    required: true 
-  }, // Reference to the listing
-
-  dealId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Deals", 
-    required: true 
-  }, // Reference to the associated deal
-  
-  traderDealId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "traderDeal", 
-    required: true 
-  }, // Reference to the associated deal
-
-  listingName: { 
-    type: String, 
-    required: true 
+  seller: { type: mongoose.Schema.Types.ObjectId, ref: 'sellers', required: true },
+  trader: { type: mongoose.Schema.Types.ObjectId, ref: 'traders', required: true },
+  listing: {
+    type: Array,
+    required: true
+},
+  listingId: { type: mongoose.Schema.Types.ObjectId, ref: 'listings', required: true },
+  shippingInfo: { type: Object, required: true },
+  deal: { type: mongoose.Schema.Types.ObjectId, ref: "authorDeal", required: true },
+  traderDeal: { type: mongoose.Schema.Types.ObjectId, ref: "traderDeals", required: true },
+  totalAmount: { type: Number, required: true },
+  paymentTerm: { type: Number, required: true },
+  deposit : {
+    depositPaymentAmount: { type: Number },
+    depositPaymentAmountProofUrl: { type: String },
+    depositPaymentAmountProofMessage: { type: String },
+    depositPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+    date: { type: Date, default: Date.now }
   },
+  midwayPayment :{
+    midwayPaymentAmount: { type: Number },
+    midwayPaymentAmountProofUrl: { type: String },
+    midwayPaymentAmountProofMessage: { type: String },
+    midwayPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+    date: { type: Date, default: Date.now }
 
-  listingPrice: { 
-    type: Number, 
-    required: true 
   },
-
-  depositAmount: { 
-    type: Number, 
-    required: true 
+  partialPayment:{
+    partialPaymentAmount: { type: Number },
+    partialPaymentAmountProofUrl: { type: String },
+    partialPaymentAmountProofMessage: { type: String },
+    partialPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+    date: { type: Date, default: Date.now }
   },
+  finalPayment : {
+    finalPaymentAmount: { type: Number },
+    finalPaymentAmountProofUrl: { type: String },
+    finalPaymentAmountProofMessage: { type: String },
+    finalPaymentCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
 
-  depositStatus: { 
-    type: String, 
-    enum: ["Pending", "Confirmed"], 
-    default: "Pending" 
   },
+  handoffProof : {
+    handoffProofUrl: { type: String },
+    handoffProofCompleted: { type: String, enum: ["Completed", "In-dispute", "Resolved", "Pending"], default: "Pending" , required: true },
+    date: { type: Date, default: Date.now }
 
-  fullPaymentStatus: { 
-    type: String, 
-    enum: ["Pending", "Confirmed"], 
-    default: "Pending" 
   },
+  status: { type: String, default: 'Pending' },
+  traderSteps: [
+    {
+      stepNumber: Number,
+      description: String,
+      completed: { type: Boolean, default: false },
+      proof: String,
+      confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'traders' }
+    }
+  ],
+  sellerSteps: [
+    {
+      stepNumber: Number,
+      description: String,
+      completed: { type: Boolean, default: false },
+      proof: String,
+      confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'sellers' }
+    }
+  ],
+  review: {
+    name: {
+      type: String,
 
-  buyerStep: { 
-    type: Number, 
-    default: 1 // Initial step for buyer: 1 (Waiting for Deposit Payment)
+    },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5, // Ensure ratings are between 1 and 5
+    },
+    review: {
+      type: String,
+    },
   },
+  reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' },
+  dispute: [
+    {
+      issue: { type: String, enum: ["Deposit Not Received", "Final Payment Not Received", "Item Not Received"], required: true },
+      // raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true }, // Either seller or trader
+      status: { type: String, enum: ["Pending", "In-Dispute", "Resolved"], default: "Pending" },
+      proofUrl: { type: Array, }, // Proof from dispute initiator
+      createdAt: { type: Date, default: Date.now },
+      reason: { type: String },
+    }
+  ],
 
-  sellerStep: { 
-    type: Number, 
-    default: 1 // Initial step for seller: 1 (Waiting for Deposit Proof)
-  },
 
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
+  buyerStep: { type: Number },
+  sellerStep: { type: Number },
+  totalSteps: { type: Number },
+  createdAt: { type: Date, default: Date.now },
+  isProductReceived : { type: Boolean, default: false },
+}, {
+  indexes: [
+    { unique: true, fields: ['seller', 'trader', 'listing', 'deal'] }
+  ]
+});
 
-}, { timestamps: true });
+transactionSchema.statics.createTransaction = async function (data) {
+  const stepsMap = {
+    2: {
+      seller: [
+        "Review",
+        "Initialization",
+        "1st Payment Confirmation",
+        "Delivery/Receipt",
+        "Handoff Confirmation",
+        "2nd Payment Confirmation",
+        "Complete"
+      ],
+      trader: [
+        "Review",
+        "Proof_Upload",
+        "Confirmation",
+        "Delivery/Receipt",
+        "Upload_Proof",
+        "Confirmation",
+        "Review",
+        "Complete"
+      ]
+    },
+    3: {
+      seller: [
+        "Review",
+        "Initialization",
+        "1st Payment Confirmation",
+        "Delivery/Receipt",
+        "Midway Payment Confirmation",
+        "2nd Payment Confirmation",
+        "Complete"
+      ],
+      trader: [
+        "Review",
+        "Proof_Upload",
+        "Confirmation",
+        "Delivery/Receipt",
+        "Upload_Midway_Proof",
+        "Confirmation",
+        "Review",
+        "Complete"
+      ]
+    },
+    4: {
+      seller: [
+        "Review",
+        "Initialization",
+        "1st Payment Confirmation",
+        "Partial Payment Confirmation",
+        "Delivery/Receipt",
+        "Midway Payment Confirmation",
+        "2nd Payment Confirmation",
+        "Complete"
+      ],
+      trader: [
+        "Review",
+        "Proof_Upload",
+        "Confirmation",
+        "Upload_Partial_Proof",
+        "Confirmation",
+        "Delivery/Receipt",
+        "Upload_Midway_Proof",
+        "Confirmation",
+        "Review",
+        "Complete"
+      ]
+    }
+  };
 
-// Adding a unique compound index to prevent repeated transactions
-transactionSchema.index({ traderId: 1, sellerId: 1, listingId: 1, dealId: 1 }, { unique: true });
+  const sellerSteps = (stepsMap[data.paymentTerm]?.seller || []).map((desc, index) => ({
+    stepNumber: index + 1, description: desc, completed: false
+  }));
 
-module.exports = mongoose.model("Transaction", transactionSchema);
+  const traderSteps = (stepsMap[data.paymentTerm]?.trader || []).map((desc, index) => ({
+    stepNumber: index + 1, description: desc, completed: false
+  }));
+
+  const totalSteps = Math.max(sellerSteps.length, traderSteps.length);
+
+  return this.create({
+    ...data,
+    sellerSteps,
+    traderSteps,
+    totalSteps
+  });
+};
+
+module.exports = mongoose.model('Transaction', transactionSchema);

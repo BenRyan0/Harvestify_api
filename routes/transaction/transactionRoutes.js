@@ -1,5 +1,7 @@
 const router = require("express").Router();
 // const dealController = require("../../controllers/deal/dealController")
+const { authMiddleware } = require("../../middlewares/authMiddleware");
+// const { authMiddleware } = require("../../../../middlewares/authMiddleware");
 const transactionController = require("../../controllers/transaction/transactionController")
 
 
@@ -31,6 +33,31 @@ router.get('/transactions/:transactionId',transactionController.getTransactionBy
 
 router.post('/submit-seller-dispute',transactionController.submitSellerDispute)
 router.post('/cancel-transaction',transactionController.submitSellerDispute)
+
+
+
+router.post('/cancel-by-trader/:transactionId/:traderId',transactionController.cancelTransactionByTrader )
+router.post('/undo-cancel-by-trader',transactionController.undoCancelTransactionByTrader )
+
+
+
+router.post('/resend-payment-proof/:transactionId', transactionController.resendDepositProof);
+
+
+
+
+router.post('/resend-payment-confirm/:transactionId', transactionController.confirmDepositReceived);
+router.post('/resend-payment-reject/:transactionId', transactionController.rejectDepositProofAfterResend);
+
+
+router.get('/escalated-transactions/detailed', transactionController.getAllEscalatedTransactionsWithDetails);
+
+
+router.post('/accept-trader-proof', transactionController.acceptTraderProof);
+// router.post('/cancel-by-trader',transactionController.cancelTransactionByTrader )
+router.post('/resolve-dispute/:transactionId', authMiddleware, transactionController.adminResolveDispute);
+
+
 
 
 
