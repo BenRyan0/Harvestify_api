@@ -39,12 +39,7 @@ const io =socket(server,{
     credentials: true,
   }
 })
-// const io =socket(server,{
-//   cors: {
-//     origin: '*',
-//     credentials: true,
-//   }
-// })
+
 dbConnect();
 
 
@@ -181,6 +176,11 @@ app.use(session({
 }));
 app.use(passport.initialize())
 app.use(passport.session())
+
+// Wakey-wakey
+app.get("/api/wakey-wakey",(req, res) =>{
+  res.status(200).json({status: "up", message: "Backend is awake!", isBackendUp: true})
+})
 
 // demo only
 app.get("/trigger-notifications", async (req, res) => {
